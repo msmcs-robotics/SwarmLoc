@@ -1,6 +1,20 @@
 // Adafruit Feather ESP32 with GPS FeatherWing and OLED Display
 // Display GPS coordinates in DMS format on OLED
 
+// https://cdn-learn.adafruit.com/assets/assets/000/133/601/large1024/wireless_Adafruit_HUZZAH32_ESP32_Feather_Pinout.png?1731518773
+
+/* Pinout
+
+GPS Featherwing sets on top of feather
+
+DSD Tech I2C OLED 0.91 - Feather
+GND - GND (GND)
+VCC - 3.3V (3V)
+SDA - SDA (GPIO 23)
+SCL - SCL (GPIO 22)
+
+*/
+
 #include <Wire.h>
 #include <U8g2lib.h>
 #include <Adafruit_GPS.h>
