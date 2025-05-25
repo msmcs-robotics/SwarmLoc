@@ -1,5 +1,15 @@
+[Get platformio](https://raw.githubusercontent.com/platformio/platformio-core-installer/master/get-platformio.py)
+
+```
+curl -fsSL -o get-platformio.py https://raw.githubusercontent.com/platformio/platformio-core-installer/master/get-platformio.py; python3 get-platformio.py
+```
+
 https://learn.adafruit.com/adafruit-esp32-feather-v2/arduino-ide-setup
 https://github.com/arduino/Arduino/wiki/Unofficial-list-of-3rd-party-boards-support-urls#list-of-3rd-party-boards-support-urls
+
+
+> https://espressif.github.io/arduino-esp32/package_esp32_index.json
+> https://adafruit.github.io/arduino-board-index/package_adafruit_index.json
 
 To install the CP2104 / CP2102N USB driver, you'll need to download the appropriate driver package from Silicon Labs https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers? tab=downloads and then manually install it using Windows Device Manager. 
 Here's a step-by-step guide:
