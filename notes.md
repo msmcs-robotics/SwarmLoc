@@ -1,4 +1,27 @@
-[Get platformio](https://raw.githubusercontent.com/platformio/platformio-core-installer/master/get-platformio.py)
+Adarfuit Huzzah32 and adafruit LoRa RFM95W 900 MHz FeatherWing
+
+[RFM95 @ 900 MHz](https://www.adafruit.com/products/3231) - LoRa capable radio at 868 or 915 MHz for use in Americas ITU 2 license-free ISM, or for amateur use with restrictions (check your local amateur regulations!) 
+
+
+
+> https://espressif.github.io/arduino-esp32/package_esp32_index.json
+ 
+
+**Add the URL**
+
+File > Preferences > Additional Board Manager Urls > Paste URL> Restart Arduino
+
+
+**Select Adafruit Huzzah32**
+
+Tools > Board > ESP32 Arduino > Adafruit ESP32 Feather
+
+
+
+
+
+
+[Get platformio](https://raw.githubusercontent.com/platformio/platformio-core-installer/master/get-platformio.py) 
 
 ```
 curl -fsSL -o get-platformio.py https://raw.githubusercontent.com/platformio/platformio-core-installer/master/get-platformio.py; python3 get-platformio.py
@@ -35,6 +58,7 @@ Follow the on-screen instructions to complete the installation.
 4. Verify Installation:
 Once the installation is complete, the device should appear under "Ports (COM & LPT)" in Device Manager.
 You should see a COM port listed, indicating that the driver is installed and the device is recognized.
+
 
 
 
