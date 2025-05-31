@@ -73,7 +73,7 @@ void setup() {
   LoRa.setCodingRate4(8);           // Error correction for reliability
   LoRa.setSyncWord(0x12);
   LoRa.enableCrc();
-  LoRa.enableInvertIQ(false);       // Consistent IQ setting
+  //LoRa.enableInvertIQ(false);       // Consistent IQ setting
 
   Serial.println("LoRa parameters set:");
   Serial.println("- TX Power: 17 dBm");
