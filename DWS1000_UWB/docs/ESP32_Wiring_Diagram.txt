@@ -1,0 +1,342 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║         ESP32 to PCL298336 DWM3000EVB Shield Wiring Diagram                  ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                                                                              │
+│                     PCL298336 DWM3000EVB Arduino Shield                      │
+│                         (White shield, v1.3)                                 │
+│                                                                              │
+│  ┌────────────────────────────────────────────────────────────────────┐     │
+│  │                                                                    │     │
+│  │                    [DWM3000 Module with Antenna]                   │     │
+│  │                                                                    │     │
+│  └────────────────────────────────────────────────────────────────────┘     │
+│                                                                              │
+│      Arduino Uno Header Pins (Female - Shield plugs onto Arduino)           │
+│                                                                              │
+│   D13  D12  D11  D10   D9   D2              5V  3.3V GND                    │
+│   SCK  MISO MOSI  CS  RST  IRQ              │    │    │                     │
+│    │    │    │    │    │    │               │    │    │                     │
+│    ●    ●    ●    ●    ●    ●               ●    ●    ●                     │
+└────┼────┼────┼────┼────┼────┼───────────────┼────┼────┼─────────────────────┘
+     │    │    │    │    │    │               │    │    │
+     │    │    │    │    │    │               │    │    │
+     │    │    │    │    │    │               X    │    │  (Don't use 5V!)
+     │    │    │    │    │    │                    │    │
+     │    │    │    │    │    │                    │    │
+     │    │    │    │    │    │         Jumper Wires    │
+     │    │    │    │    │    │         (8 total)       │
+     │    │    │    │    │    │                    │    │
+     │    │    │    │    │    │                    │    │
+     ▼    ▼    ▼    ▼    ▼    ▼                    ▼    ▼
+┌────────────────────────────────────────────────────────────────────────────┐
+│                                                                            │
+│                         ESP32 DevKit Board                                 │
+│                      (30-pin ESP32-WROOM-32)                               │
+│                                                                            │
+│  ┌──────────────────────────────────────────────────────────────────────┐ │
+│  │                                                                      │ │
+│  │  EN  36  39  34  35  32  33  25  26  27  14  12  GND 13  9  10  11  │ │
+│  │                                                                      │ │
+│  │  ┌────────────────────────────────────────────────────────┐         │ │
+│  │  │                                                        │         │ │
+│  │  │              ESP32-WROOM-32 Module                     │         │ │
+│  │  │           (Shielded metal can)                         │         │ │
+│  │  │                                                        │         │ │
+│  │  └────────────────────────────────────────────────────────┘         │ │
+│  │                                                                      │ │
+│  │  3V3 GND  15  2   0   4   16  17  5   18  19       21  RX  TX  22   │ │
+│  │   │   │             ▲   ▲   ▲   ▲   ▲   ▲                           │ │
+│  └───┼───┼─────────────┼───┼───┼───┼───┼───┼───────────────────────────┘ │
+│      │   │             │   │   │   │   │   │                             │
+│      ●   ●             ●   ●   ●   ●   ●   ●                             │
+│                                                                            │
+│     3.3V GND          IRQ RST  CS SCK MISO MOSI                           │
+│                       GP4 GP16 GP5 GP18 GP19 GP23                         │
+│                                                                            │
+│                     [USB Cable to Computer]                                │
+│                              │                                             │
+└──────────────────────────────┼─────────────────────────────────────────────┘
+                               ▼
+                          Computer USB Port
+                        (Powers ESP32 and Shield)
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         CONNECTION TABLE                                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────┬──────────────┬──────────────┬─────────────┬──────────────────┐
+│   Signal    │ Shield Pin   │  ESP32 Pin   │  Wire Color │    Function      │
+│             │ (Arduino)    │  (GPIO)      │ (Suggested) │                  │
+├─────────────┼──────────────┼──────────────┼─────────────┼──────────────────┤
+│    MOSI     │    D11       │   GPIO 23    │   Yellow    │ SPI Master Out   │
+│    MISO     │    D12       │   GPIO 19    │   Green     │ SPI Master In    │
+│    SCK      │    D13       │   GPIO 18    │   Blue      │ SPI Clock        │
+│    CS       │    D10       │   GPIO 5     │   White     │ Chip Select      │
+│    IRQ      │    D2        │   GPIO 4     │   Orange    │ Interrupt        │
+│    RST      │    D9        │   GPIO 16    │   Brown     │ Reset            │
+│    3.3V     │   3.3V       │   3.3V       │   Red       │ Power (+)        │
+│    GND      │    GND       │   GND        │   Black     │ Ground (-)       │
+└─────────────┴──────────────┴──────────────┴─────────────┴──────────────────┘
+
+Total Wires Needed: 8
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                      BREADBOARD LAYOUT (Top View)                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Power Rails:  + = 3.3V    - = GND
+
+   +  -                                                               +  -
+   │  │                                                               │  │
+───┼──┼─────────────────────────────────────────────────────────────┼──┼───
+   │  │                                                               │  │
+   │  │     ┌─────────────────────────────────────┐                  │  │
+   │  │     │   PCL298336 Shield Headers          │                  │  │
+   │  │     │   (Inserted into breadboard)        │                  │  │
+   │  │     │                                     │                  │  │
+   │  │     │  D13 D12 D11 D10 D9  D2  3.3V GND   │                  │  │
+   │  │     └───┼──┼──┼──┼──┼──┼───┼───┼─────────┘                  │  │
+   │  │         │  │  │  │  │  │   │   │                             │  │
+   │  │         │  │  │  │  │  │   │   │  Jumper Wires              │  │
+   │  │         │  │  │  │  │  │   │   │                             │  │
+   │  └─────────┼──┼──┼──┼──┼──┼───┼───┼─────────────────────────────┘  │
+   │            │  │  │  │  │  │   │   └────────────────────────────────┘
+   │            │  │  │  │  │  │   └──────────────────────┐
+   │            │  │  │  │  │  └────────────────┐         │
+   │            │  │  │  │  └─────────┐         │         │
+   │            │  │  │  └──────┐     │         │         │
+   │            │  │  └───┐     │     │         │         │
+   │            │  └──┐   │     │     │         │         │
+   └───────────────┐ │   │     │     │         │         │
+                   │ │   │     │     │         │         │
+   ┌───────────────┼─┼───┼─────┼─────┼─────────┼─────────┼─────────────┐
+   │               │ │   │     │     │         │         │             │
+   │  ESP32 DevKit │ │   │     │     │         │         │             │
+   │               │ │   │     │     │         │         │             │
+   │  3.3V GND  23 19  18   5   4  16                                  │
+   │               │ │   │     │     │         │         │             │
+   └───────────────┴─┴───┴─────┴─────┴─────────┴─────────┴─────────────┘
+                   │ │   │     │     │         │         │
+                 MOSI │  SCK   CS   IRQ       RST       GND     3.3V
+                   MISO
+
+───┼──┼─────────────────────────────────────────────────────────────┼──┼───
+   │  │                                                               │  │
+   +  -                                                               +  -
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                        PIN LOCATION REFERENCE                                ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+ESP32 DevKit - 30 Pin Layout (looking at component side, USB at top):
+
+         ┌─────────────┐
+         │   USB Port  │
+         └─────────────┘
+              ││││
+    ┌──────────────────────┐
+    │ ┌──────────────────┐ │
+    │ │                  │ │
+  ┌─┴─┴──────────────────┴─┴─┐
+  │                            │
+  │   EN   ●  ●  3V3           │  Left side (top to bottom)
+  │   36   ●  ●  GND           │
+  │   39   ●  ●  15            │
+  │   34   ●  ●  2             │
+  │   35   ●  ●  0             │
+  │   32   ●  ●  4    ← IRQ    │
+  │   33   ●  ●  16   ← RST    │
+  │   25   ●  ●  17            │
+  │   26   ●  ●  5    ← CS     │
+  │   27   ●  ●  18   ← SCK    │
+  │   14   ●  ●  19   ← MISO   │
+  │   12   ●  ●  21            │
+  │  GND   ●  ●  RX            │
+  │   13   ●  ●  TX            │
+  │    9   ●  ●  22            │
+  │   10   ●  ●  23   ← MOSI   │
+  │   11   ●                   │
+  │  VIN   ●                   │
+  └────────────────────────────┘
+
+Right side pins (ESP32 specific - 3.3V, SPI, etc.)
+Left side pins (ESP32 input/sensor pins)
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         POWER SUPPLY NOTES                                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│                                                                            │
+│  Computer USB Port (5V, 500-900mA)                                         │
+│           │                                                                │
+│           │ USB Cable                                                      │
+│           ▼                                                                │
+│  ┌─────────────────────────────────────────────────┐                      │
+│  │   ESP32 DevKit Onboard Regulator                │                      │
+│  │   (Converts 5V USB → 3.3V for ESP32)            │                      │
+│  └─────────────────────────────────────────────────┘                      │
+│           │                                                                │
+│           ├──────────────────┐                                            │
+│           │                  │                                            │
+│           ▼                  ▼                                            │
+│  ┌──────────────────┐  ┌──────────────────────────┐                      │
+│  │  ESP32 Module    │  │  3.3V Output Pin         │                      │
+│  │  (240 MHz CPU)   │  │  (600-800mA capable)     │                      │
+│  │  ~80-240 mA      │  │                          │                      │
+│  └──────────────────┘  └──────────┬───────────────┘                      │
+│                                   │                                       │
+│                                   │ 3.3V wire (Red)                       │
+│                                   ▼                                       │
+│                        ┌────────────────────────────┐                     │
+│                        │  DWM3000 Module on Shield  │                     │
+│                        │  ~15mA idle, ~150mA TX     │                     │
+│                        │  Average: ~40-60mA         │                     │
+│                        └────────────────────────────┘                     │
+│                                                                            │
+│  Total Current Draw: ~150-300mA typical, ~400mA peak                      │
+│  USB Capability: 500mA minimum (USB 2.0 spec)                             │
+│  Result: SAFE with margin                                                 │
+│                                                                            │
+│  IMPORTANT: Do NOT connect shield 5V pin - not needed with ESP32!         │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    OPTIONAL: DECOUPLING CAPACITORS                           ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Recommended (but not required for initial testing):
+
+Place capacitors as close as possible to DWM3000 power pins:
+
+    3.3V ──┬──┬─────────── DWM3000 VCC
+           │  │
+          ═╪══╪═  10µF Electrolytic (bulk storage)
+          ─╪──╪─  100nF Ceramic (high frequency filtering)
+           │  │
+    GND  ──┴──┴─────────── DWM3000 GND
+
+Purpose:
+- Reduces voltage sag during TX bursts (150mA peak)
+- Filters high-frequency noise
+- Improves stability
+- Prevents module resets
+
+If you see unstable operation, add these first!
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         ASSEMBLY CHECKLIST                                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Before Powering Up:
+
+  [ ] All 8 wires connected (check twice!)
+  [ ] MOSI goes to GPIO 23 (not MISO!)
+  [ ] MISO goes to GPIO 19 (not MOSI!)
+  [ ] SCK, CS, IRQ, RST wired correctly
+  [ ] 3.3V connected (RED wire, not 5V!)
+  [ ] GND connected (BLACK wire)
+  [ ] No shorts between adjacent pins
+  [ ] Antenna has clearance (>2cm from metal)
+  [ ] Shield securely mounted (not loose)
+  [ ] ESP32 securely mounted
+  [ ] Photo taken of wiring (for reference)
+
+After Powering Up:
+
+  [ ] ESP32 power LED lights up
+  [ ] Shield power LED lights up (if present)
+  [ ] No smoke, no burning smell
+  [ ] ESP32 recognized by computer (check Device Manager / dmesg)
+  [ ] Serial port appears (e.g., COM3, /dev/ttyUSB0)
+
+Code Testing:
+
+  [ ] Uploads successfully
+  [ ] Serial monitor connects (115200 baud)
+  [ ] Device ID reads correctly (0xDECA0302)
+  [ ] Interrupt fires (test with LED)
+  [ ] Basic TX/RX works
+  [ ] Ready for ranging!
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         TROUBLESHOOTING GUIDE                                ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Problem: Device ID reads 0x00000000 or 0xFFFFFFFF
+├─ Check: All SPI wires connected (MOSI, MISO, SCK, CS)
+├─ Check: MOSI and MISO not swapped
+├─ Check: 3.3V present at shield (measure with multimeter)
+└─ Try: Lower SPI speed to 1 MHz in code
+
+Problem: No interrupt firing
+├─ Check: IRQ wire connected to GPIO 4
+├─ Check: Interrupt attached in code (attachInterrupt)
+└─ Try: Test IRQ pin with LED (should blink on events)
+
+Problem: Module resets randomly / unstable
+├─ Check: Voltage at DWM3000 stays >3.2V (measure during TX)
+├─ Add: Decoupling capacitors (10µF + 100nF)
+└─ Try: Powered USB hub (some laptop ports are weak)
+
+Problem: ESP32 not recognized by computer
+├─ Check: USB cable is data cable (not charge-only)
+├─ Install: CP2102 or CH340 USB driver (depending on ESP32 board)
+└─ Try: Different USB port or cable
+
+Problem: Code uploads but doesn't run
+├─ Try: Press RESET button on ESP32 after upload
+├─ Check: Serial monitor baud rate matches code (115200)
+└─ Try: Hold BOOT button during upload if auto-reset fails
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              QUICK REFERENCE                                 ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Shield Pin    ESP32 GPIO    Wire Color    Function
+──────────────────────────────────────────────────
+D11 (MOSI)  →  GPIO 23    Yellow        SPI Data Out
+D12 (MISO)  →  GPIO 19    Green         SPI Data In
+D13 (SCK)   →  GPIO 18    Blue          SPI Clock
+D10 (CS)    →  GPIO 5     White         Chip Select
+D2  (IRQ)   →  GPIO 4     Orange        Interrupt
+D9  (RST)   →  GPIO 16    Brown         Reset
+3.3V        →  3.3V       Red           Power +3.3V
+GND         →  GND        Black         Ground
+
+Total: 8 wires needed
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         DOCUMENT INFORMATION                                 ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Created: 2026-01-08
+Hardware: Qorvo PCL298336 v1.3 DWM3000EVB Arduino Shield
+Target: ESP32 DevKit (ESP32-WROOM-32, 30-pin)
+Purpose: Manual wiring reference for ESP32 migration
+
+Related Documents:
+- ESP32_Migration_Guide.md (complete technical guide)
+- ESP32_Connection_Summary.md (quick reference)
+- roadmap.md (project plan)
+
+For latest version, see:
+/home/devel/Desktop/SwarmLoc/DWS1000_UWB/docs/
+
+═══════════════════════════════════════════════════════════════════════════════
+                              END OF DIAGRAM
+═══════════════════════════════════════════════════════════════════════════════

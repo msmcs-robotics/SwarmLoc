@@ -1,0 +1,158 @@
+[0;32m========================================[0m
+[0;32m  Test 2: DW1000 Library Connectivity[0m
+[0;32m========================================[0m
+
+Upload port: /dev/ttyACM0
+
+Creating temporary PlatformIO project...
+Copying test sketch...
+Linking DW1000 library...
+Configuration created
+
+[1;33mCompiling...[0m
+Processing uno (platform: atmelavr; board: uno; framework: arduino)
+--------------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+CONFIGURATION: https://docs.platformio.org/page/boards/atmelavr/uno.html
+PLATFORM: Atmel AVR (5.1.0) > Arduino Uno
+HARDWARE: ATMEGA328P 16MHz, 2KB RAM, 31.50KB Flash
+DEBUG: Current (avr-stub) External (avr-stub, simavr)
+PACKAGES: 
+ - framework-arduino-avr @ 5.2.0 
+ - toolchain-atmelavr @ 1.70300.191015 (7.3.0)
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 6 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- SPI @ 1.0
+|-- DW1000 @ 0.9
+Building in release mode
+Compiling .pio/build/uno/src/main.cpp.o
+Compiling .pio/build/uno/libe82/SPI/SPI.cpp.o
+Compiling .pio/build/uno/lib909/DW1000/DW1000.cpp.o
+Compiling .pio/build/uno/lib909/DW1000/DW1000Device.cpp.o
+Compiling .pio/build/uno/lib909/DW1000/DW1000Mac.cpp.o
+Archiving .pio/build/uno/libe82/libSPI.a
+Compiling .pio/build/uno/lib909/DW1000/DW1000Ranging.cpp.o
+Indexing .pio/build/uno/libe82/libSPI.a
+Compiling .pio/build/uno/lib909/DW1000/DW1000Time.cpp.o
+Archiving .pio/build/uno/libFrameworkArduinoVariant.a
+Indexing .pio/build/uno/libFrameworkArduinoVariant.a
+Compiling .pio/build/uno/FrameworkArduino/CDC.cpp.o
+Compiling .pio/build/uno/FrameworkArduino/HardwareSerial.cpp.o
+Compiling .pio/build/uno/FrameworkArduino/HardwareSerial0.cpp.o
+Compiling .pio/build/uno/FrameworkArduino/HardwareSerial1.cpp.o
+lib/DW1000/src/DW1000Ranging.cpp: In static member function 'static void DW1000RangingClass::loop()':
+lib/DW1000/src/DW1000Ranging.cpp:526:28: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
+      for(uint16_t i = 0; i < numberDevices; i++) {
+                          ~~^~~~~~~~~~~~~~~
+Compiling .pio/build/uno/FrameworkArduino/HardwareSerial2.cpp.o
+lib/DW1000/src/DW1000Ranging.cpp: In static member function 'static int16_t DW1000RangingClass::detectMessageType(byte*)':
+lib/DW1000/src/DW1000Ranging.cpp:371:1: warning: control reaches end of non-void function [-Wreturn-type]
+ }
+ ^
+Compiling .pio/build/uno/FrameworkArduino/HardwareSerial3.cpp.o
+Compiling .pio/build/uno/FrameworkArduino/IPAddress.cpp.o
+Compiling .pio/build/uno/FrameworkArduino/PluggableUSB.cpp.o
+Compiling .pio/build/uno/FrameworkArduino/Print.cpp.o
+Compiling .pio/build/uno/FrameworkArduino/Stream.cpp.o
+Compiling .pio/build/uno/FrameworkArduino/Tone.cpp.o
+Compiling .pio/build/uno/FrameworkArduino/USBCore.cpp.o
+Archiving .pio/build/uno/lib909/libDW1000.a
+Indexing .pio/build/uno/lib909/libDW1000.a
+Compiling .pio/build/uno/FrameworkArduino/WInterrupts.c.o
+Compiling .pio/build/uno/FrameworkArduino/WMath.cpp.o
+Compiling .pio/build/uno/FrameworkArduino/WString.cpp.o
+Compiling .pio/build/uno/FrameworkArduino/abi.cpp.o
+Compiling .pio/build/uno/FrameworkArduino/hooks.c.o
+Compiling .pio/build/uno/FrameworkArduino/main.cpp.o
+Compiling .pio/build/uno/FrameworkArduino/new.cpp.o
+Compiling .pio/build/uno/FrameworkArduino/wiring.c.o
+Compiling .pio/build/uno/FrameworkArduino/wiring_analog.c.o
+Compiling .pio/build/uno/FrameworkArduino/wiring_digital.c.o
+Compiling .pio/build/uno/FrameworkArduino/wiring_pulse.S.o
+Compiling .pio/build/uno/FrameworkArduino/wiring_pulse.c.o
+Compiling .pio/build/uno/FrameworkArduino/wiring_shift.c.o
+Archiving .pio/build/uno/libFrameworkArduino.a
+Indexing .pio/build/uno/libFrameworkArduino.a
+Linking .pio/build/uno/firmware.elf
+Checking size .pio/build/uno/firmware.elf
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [===       ]  25.0% (used 513 bytes from 2048 bytes)
+Flash: [===       ]  26.4% (used 8502 bytes from 32256 bytes)
+Building .pio/build/uno/firmware.hex
+========================= [SUCCESS] Took 0.64 seconds =========================
+[0;32m✓ Compilation successful[0m
+
+[1;33mUploading to /dev/ttyACM0...[0m
+Processing uno (platform: atmelavr; board: uno; framework: arduino)
+--------------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+CONFIGURATION: https://docs.platformio.org/page/boards/atmelavr/uno.html
+PLATFORM: Atmel AVR (5.1.0) > Arduino Uno
+HARDWARE: ATMEGA328P 16MHz, 2KB RAM, 31.50KB Flash
+DEBUG: Current (avr-stub) External (avr-stub, simavr)
+PACKAGES: 
+ - framework-arduino-avr @ 5.2.0 
+ - tool-avrdude @ 1.60300.200527 (6.3.0) 
+ - toolchain-atmelavr @ 1.70300.191015 (7.3.0)
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 6 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- SPI @ 1.0
+|-- DW1000 @ 0.9
+Building in release mode
+Checking size .pio/build/uno/firmware.elf
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [===       ]  25.0% (used 513 bytes from 2048 bytes)
+Flash: [===       ]  26.4% (used 8502 bytes from 32256 bytes)
+Configuring upload protocol...
+AVAILABLE: arduino
+CURRENT: upload_protocol = arduino
+Looking for upload port...
+Using manually specified: /dev/ttyACM0
+Uploading .pio/build/uno/firmware.hex
+
+avrdude: AVR device initialized and ready to accept instructions
+
+Reading | ################################################## | 100% 0.00s
+
+avrdude: Device signature = 0x1e950f (probably m328p)
+avrdude: reading input file ".pio/build/uno/firmware.hex"
+avrdude: writing flash (8502 bytes):
+
+Writing | ################################################## | 100% 1.38s
+
+avrdude: 8502 bytes of flash written
+avrdude: verifying flash memory against .pio/build/uno/firmware.hex:
+avrdude: load data flash data from input file .pio/build/uno/firmware.hex:
+avrdude: input file .pio/build/uno/firmware.hex contains 8502 bytes
+avrdude: reading on-chip flash data:
+
+Reading | ################################################## | 100% 1.11s
+
+avrdude: verifying ...
+avrdude: 8502 bytes of flash verified
+
+avrdude done.  Thank you.
+
+========================= [SUCCESS] Took 4.03 seconds =========================
+[0;32m✓ Upload successful[0m
+
+[1;33m========================================[0m
+Upload complete!
+[1;33m========================================[0m
+
+Expected output:
+  - 'DW1000 initialized ...'
+  - 'Committed configuration ...'
+  - Device ID: DW1000 [chip info]
+  - Unique ID: [64-bit ID]
+  - Network ID & Device Address: PAN: 0x000A, Short Address: 0x0005
+  - Device mode: [mode info]
+
+Output should repeat every 10 seconds
+
