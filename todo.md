@@ -42,4 +42,5 @@ GitHub: arduino-dw1000 - Library uses attachInterrupt(digitalPinToInterrupt(irq)
 
 
 
-well i can't add the jumper wire, the hat i am using connects to all arduino UNO pins and fills them all up
+ok i have now connected a jumper wire to D8 and D2 on the arduino, please make sure to be documenting these trials in the findings folder of the docs folder in the DWS1000 UWB directory.... otherwise please continue with development and test your changes and perform web research as needed and spawn multiple agents in parallel to speed things up as needed
+to clarify, i have the UWB hat on top of the arduino, then the jumper wire connecting the specified pins on top of the hat.... for both arduinos..... otherwise please continue
