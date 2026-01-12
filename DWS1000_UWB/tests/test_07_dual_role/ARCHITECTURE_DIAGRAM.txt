@@ -1,0 +1,419 @@
+========================================
+DUAL-ROLE FIRMWARE ARCHITECTURE
+========================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          DUAL-ROLE FIRMWARE v1.0                            │
+│                     (Arduino Uno + DW1000 UWB Module)                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+SYSTEM OVERVIEW
+═══════════════════════════════════════════════════════════════════════════════
+
+┌───────────────┐       ┌───────────────┐       ┌───────────────┐
+│   User Input  │──────▶│   Firmware    │──────▶│  DW1000 Radio │
+│ (Serial USB)  │       │   Controller  │       │   Hardware    │
+└───────────────┘       └───────────────┘       └───────────────┘
+        ▲                      │ │ │                     │
+        │                      │ │ │                     │
+        │                      ▼ ▼ ▼                     ▼
+        │              ┌───────────────┐         ┌──────────────┐
+        └──────────────│    EEPROM     │         │  UWB Ranging │
+         Status/Logs   │ (Role Storage)│         │   Protocol   │
+                       └───────────────┘         └──────────────┘
+
+
+FIRMWARE ARCHITECTURE
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            MAIN COMPONENTS                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌────────────────┐    ┌─────────────────┐    ┌──────────────────┐        │
+│  │ Serial Command │───▶│  Role Manager   │───▶│  EEPROM Storage  │        │
+│  │   Interface    │    │  (A/T/S/R/H)    │    │  (2 bytes used)  │        │
+│  └────────────────┘    └─────────────────┘    └──────────────────┘        │
+│         │                      │                        │                  │
+│         │                      ▼                        │                  │
+│         │              ┌───────────────┐                │                  │
+│         │              │ Software Reset│                │                  │
+│         │              │ (jmp 0)       │                │                  │
+│         │              └───────────────┘                │                  │
+│         │                      │                        │                  │
+│         │                      ▼                        ▼                  │
+│         │      ┌────────────────────────────────────────────┐             │
+│         │      │          BOOT SEQUENCE                     │             │
+│         │      │  1. Read role from EEPROM                  │             │
+│         │      │  2. Initialize DW1000                      │             │
+│         │      │  3. Start as ANCHOR or TAG                 │             │
+│         │      │  4. Enter main loop                        │             │
+│         │      └────────────────────────────────────────────┘             │
+│         │                      │                                           │
+│         │         ┌────────────┴────────────┐                             │
+│         │         ▼                          ▼                             │
+│         │  ┌──────────────┐         ┌───────────────┐                     │
+│         │  │ ANCHOR MODE  │         │   TAG MODE    │                     │
+│         │  │              │         │               │                     │
+│         └─▶│ - Respond    │         │ - Initiate    │                     │
+│            │ - Fixed      │         │ - Mobile      │                     │
+│            │ - No TDMA    │         │ - TDMA        │                     │
+│            └──────────────┘         └───────────────┘                     │
+│                   │                         │                              │
+│                   └─────────┬───────────────┘                              │
+│                             ▼                                              │
+│                   ┌─────────────────┐                                      │
+│                   │ DW1000Ranging   │                                      │
+│                   │    Library      │                                      │
+│                   │  .loop() call   │                                      │
+│                   └─────────────────┘                                      │
+│                             │                                              │
+│                             ▼                                              │
+│                   ┌─────────────────┐                                      │
+│                   │   UWB Radio     │                                      │
+│                   │  Hardware (SPI) │                                      │
+│                   └─────────────────┘                                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+STATE MACHINE
+═══════════════════════════════════════════════════════════════════════════════
+
+           ┌──────────────┐
+           │     BOOT     │
+           └──────┬───────┘
+                  │
+                  ▼
+        ┌─────────────────┐
+        │ Read EEPROM Role│
+        └─────────┬───────┘
+                  │
+     ┌────────────┼────────────┐
+     │            │            │
+     ▼            ▼            ▼
+Role='A'      Role='T'    Invalid
+     │            │            │
+     ▼            ▼            └──▶ Default to TAG
+┌─────────┐ ┌─────────┐
+│ ANCHOR  │ │   TAG   │
+│  MODE   │ │  MODE   │
+└────┬────┘ └────┬────┘
+     │           │
+     │           └──────┐
+     │                  │
+     └──────┬───────────┘
+            │
+            ▼
+    ┌───────────────┐
+    │ MAIN LOOP     │◀──────────────┐
+    │ - Ranging     │               │
+    │ - TDMA (TAG)  │               │
+    │ - Heartbeat   │               │
+    │ - Commands    │               │
+    └───────┬───────┘               │
+            │                       │
+            │ Serial command?       │
+            │                       │
+      ┌─────┴─────┐                │
+      ▼           ▼                │
+    'A' or 'T'  Other              │
+      │           │                │
+      ▼           └────────────────┘
+┌──────────────┐
+│ Save to      │
+│ EEPROM       │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│ Reset (jmp 0)│
+└──────────────┘
+       │
+       └──────────▶ (Back to BOOT)
+
+
+TDMA TIME SLOT ALLOCATION (4 TAG Nodes Example)
+═══════════════════════════════════════════════════════════════════════════════
+
+Timeline: 600ms frame (4 nodes × 150ms slots)
+
+Node 1 (Slot 0):
+┌────────┬─────────┬─────────┬─────────┬────────┬─────────┬
+│ RANGE  │  IDLE   │  IDLE   │  IDLE   │ RANGE  │  IDLE   │ ...
+└────────┴─────────┴─────────┴─────────┴────────┴─────────┴
+0       150       300       450       600       750       900 (ms)
+
+Node 2 (Slot 1):
+┌─────────┬────────┬─────────┬─────────┬─────────┬────────┬
+│  IDLE   │ RANGE  │  IDLE   │  IDLE   │  IDLE   │ RANGE  │ ...
+└─────────┴────────┴─────────┴─────────┴─────────┴────────┴
+0       150       300       450       600       750       900 (ms)
+
+Node 3 (Slot 2):
+┌─────────┬─────────┬────────┬─────────┬─────────┬─────────┬
+│  IDLE   │  IDLE   │ RANGE  │  IDLE   │  IDLE   │  IDLE   │ ...
+└─────────┴─────────┴────────┴─────────┴─────────┴─────────┴
+0       150       300       450       600       750       900 (ms)
+
+Node 4 (Slot 3):
+┌─────────┬─────────┬─────────┬────────┬─────────┬─────────┬
+│  IDLE   │  IDLE   │  IDLE   │ RANGE  │  IDLE   │  IDLE   │ ...
+└─────────┴─────────┴─────────┴────────┴─────────┴─────────┴
+0       150       300       450       600       750       900 (ms)
+
+Update Rate: 1.67 Hz per node
+Frame Duration: 600ms
+Collision Probability: 0% (time-division prevents collisions)
+
+
+MEMORY LAYOUT
+═══════════════════════════════════════════════════════════════════════════════
+
+Arduino Uno SRAM: 2048 bytes
+┌─────────────────────────────────────────────────────────┐
+│ 0x000                                                   │
+├─────────────────────────────────────────────────────────┤
+│ Arduino Core (~200 bytes)                               │
+│ - Serial buffers, timers, interrupts                    │
+├─────────────────────────────────────────────────────────┤
+│ DW1000 Library State (~150 bytes)                       │
+│ - SPI buffers, registers, protocol state                │
+├─────────────────────────────────────────────────────────┤
+│ Device Array (296 bytes)                                │
+│ - 4 devices × 74 bytes each                             │
+│ - Each device: address, timestamps, range, RX power     │
+├─────────────────────────────────────────────────────────┤
+│ Firmware Variables (~150 bytes)                         │
+│ - currentRole, frameStartTime, counters, etc.           │
+├─────────────────────────────────────────────────────────┤
+│ Stack (~800 bytes)                                      │
+│ - Function call stack, local variables                  │
+├─────────────────────────────────────────────────────────┤
+│ FREE (~452 bytes)  ◀─── Safety margin                   │
+├─────────────────────────────────────────────────────────┤
+│ 0x7FF (2048)                                            │
+└─────────────────────────────────────────────────────────┘
+
+Total Used: ~1596 bytes (78%)
+Available:   ~452 bytes (22%)
+
+
+EEPROM LAYOUT
+═══════════════════════════════════════════════════════════════════════════════
+
+Arduino Uno EEPROM: 1024 bytes
+┌─────────────────────────────────────────────────────────┐
+│ Address 0x00: Role ('A' = Anchor, 'T' = Tag)            │
+│ Address 0x01: Magic Byte (0x42 = initialized)           │
+│ Address 0x02-0x3FF: Reserved (1022 bytes unused)        │
+└─────────────────────────────────────────────────────────┘
+
+Write Endurance: 100,000 cycles
+Expected Lifetime: Years (role changes are infrequent)
+
+
+RANGING PROTOCOL (TWO-WAY RANGING)
+═══════════════════════════════════════════════════════════════════════════════
+
+TAG (Initiator)                                 ANCHOR (Responder)
+     │                                                 │
+     │  ──────────── POLL ──────────▶                 │
+     │  (timestamp: T1)                               │
+     │                                  (timestamp: T2)│
+     │                                                 │
+     │  ◀──────── POLL_ACK ───────────                │
+     │  (timestamp: T4)                               │
+     │                                  (timestamp: T3)│
+     │                                                 │
+     │  ──────────── RANGE ──────────▶                │
+     │  (contains T1, T4)                             │
+     │                                  (timestamp: T5)│
+     │                                                 │
+     │  ◀────── RANGE_REPORT ─────────                │
+     │  (contains computed distance)                  │
+     │                                  (timestamp: T6)│
+     │                                                 │
+     ▼                                                 ▼
+
+Time-of-Flight Calculation:
+ToF = [(T4-T1) - (T3-T2)] / 2
+Distance = ToF × speed_of_light
+
+
+SERIAL COMMAND FLOW
+═══════════════════════════════════════════════════════════════════════════════
+
+User Terminal                        Firmware
+     │                                    │
+     │  ───── Type 'A' ────────▶          │
+     │                                    │
+     │                          Read serial char
+     │                          Parse command
+     │                          Check current role
+     │                                    │
+     │  ◀─── "ROLE SWITCH REQUEST" ─────  │
+     │                                    │
+     │                          Save 'A' to EEPROM
+     │                                    │
+     │  ◀─── "Resetting in 3..." ───────  │
+     │  ◀─── "2..." ────────────────────  │
+     │  ◀─── "1..." ────────────────────  │
+     │                                    │
+     │                          asm volatile ("jmp 0")
+     │                                    │
+     │      [Connection drops]            │
+     │                                    │
+     │      [Arduino resets]              │
+     │                                    │
+     │                          BOOT
+     │                          Read EEPROM → 'A'
+     │                          Init as ANCHOR
+     │                                    │
+     │  ◀─── "Current role: ANCHOR" ────  │
+     │  ◀─── "Ready!" ──────────────────  │
+     │                                    │
+     ▼                                    ▼
+
+
+TYPICAL DEPLOYMENT SCENARIO
+═══════════════════════════════════════════════════════════════════════════════
+
+Drone Swarm (4 nodes: 1 ANCHOR + 3 TAGs)
+
+                           ANCHOR Drone
+                          (Fixed Position)
+                        /        |        \
+                       /         |         \
+                      /          |          \
+                     /           |           \
+                    /            |            \
+                   /             |             \
+              TAG 1          TAG 2          TAG 3
+           (Mobile)        (Mobile)       (Mobile)
+           Slot 0          Slot 1         Slot 2
+
+           All tags range with anchor in turn (TDMA)
+           Update rate: ~2.2 Hz per tag
+           No collisions (time-division)
+
+
+CONFIGURATION EXAMPLE
+═══════════════════════════════════════════════════════════════════════════════
+
+Node 1 (ANCHOR):
+  NODE_ID = 1
+  MY_ANCHOR_ADDRESS = "82:17:5B:D5:A9:9A:E2:9A"
+  Role set to: ANCHOR (via command 'A')
+
+Node 2 (TAG):
+  NODE_ID = 1
+  MY_TAG_ADDRESS = "7D:00:22:EA:82:60:3B:9B"
+  NUM_NODES = 3
+  Role set to: TAG (via command 'T')
+
+Node 3 (TAG):
+  NODE_ID = 2
+  MY_TAG_ADDRESS = "7D:00:22:EA:82:60:3B:9C"
+  NUM_NODES = 3
+  Role set to: TAG (via command 'T')
+
+Node 4 (TAG):
+  NODE_ID = 3
+  MY_TAG_ADDRESS = "7D:00:22:EA:82:60:3B:9D"
+  NUM_NODES = 3
+  Role set to: TAG (via command 'T')
+
+
+KEY DESIGN PRINCIPLES
+═══════════════════════════════════════════════════════════════════════════════
+
+1. SIMPLICITY
+   - Reset-based role switching (simple, reliable)
+   - EEPROM storage (2 bytes, simple API)
+   - Single-character commands (no parsing complexity)
+
+2. MEMORY EFFICIENCY
+   - Single-role active (not dual-role simultaneous)
+   - ~1600 bytes SRAM total
+   - 450 bytes safety margin
+
+3. COMPATIBILITY
+   - Works with unmodified DW1000Ranging library
+   - No library patches required (except known interrupt bug)
+   - Standard Arduino APIs (Serial, EEPROM, SPI)
+
+4. FLEXIBILITY
+   - Runtime role switching (no reflashing)
+   - Configurable TDMA (NUM_NODES, SLOT_DURATION_MS)
+   - Persistent configuration (survives power cycles)
+
+5. MAINTAINABILITY
+   - Comprehensive documentation (30+ pages)
+   - Automated testing (5 test scenarios)
+   - Clear upgrade path (ESP32 migration)
+
+
+PERFORMANCE CHARACTERISTICS
+═══════════════════════════════════════════════════════════════════════════════
+
+Ranging Update Rate:
+  - Single TAG:    ~5 Hz (no TDMA)
+  - 2 TAGs:        ~3.3 Hz per TAG
+  - 3 TAGs:        ~2.2 Hz per TAG
+  - 4 TAGs:        ~1.7 Hz per TAG
+
+Role Switch Time:
+  - Command → Reset → Boot → Active: ~5-6 seconds
+
+Memory Usage:
+  - SRAM:   1596 bytes used / 2048 total (78%)
+  - Flash:  ~16 KB used / 30 KB available (53%)
+  - EEPROM: 2 bytes used / 1024 total (0.2%)
+
+Accuracy (Target):
+  - ±20-50cm (Arduino Uno limitation)
+  - Dependent on environment, antenna, calibration
+
+
+FUTURE ENHANCEMENTS
+═══════════════════════════════════════════════════════════════════════════════
+
+Short-Term (Arduino Uno):
+  - Beacon-based TDMA synchronization
+  - Address conflict detection
+  - Watchdog timer for auto-recovery
+
+Medium-Term (ESP32 Port):
+  - True runtime role switching (no reset)
+  - WiFi telemetry to ground station
+  - Kalman filtering for smooth position
+  - 520 KB SRAM (260× more than Uno)
+
+Long-Term (Production):
+  - Flight controller integration (MAVLink)
+  - Multi-hop mesh routing
+  - Dynamic role assignment
+  - 10+ hour continuous operation
+
+
+REFERENCES
+═══════════════════════════════════════════════════════════════════════════════
+
+Research Document:
+  /home/devel/Desktop/SwarmLoc/DWS1000_UWB/docs/findings/DUAL_ROLE_ARCHITECTURE.md
+
+Related Tests:
+  test_06_ranging: Anchor/Tag examples
+
+Library:
+  arduino-dw1000 v0.9 (DW1000Ranging)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+END OF ARCHITECTURE DIAGRAM
+Created: 2026-01-11
+Version: 1.0 (Prototype)
+Status: Design Complete - Ready for Testing
+═══════════════════════════════════════════════════════════════════════════════

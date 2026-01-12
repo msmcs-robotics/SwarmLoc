@@ -1,1 +1,41 @@
+# Claude Code
 **/.claude/
+
+# PlatformIO
+**/.pio/
+**/.pioenvs/
+**/.piolibdeps/
+**/platformio.ini.bak
+
+# Temporary test directories
+/tmp/
+**/temp/
+
+# Test output logs
+**/*.log
+**/test_output/
+**/test_results/
+
+# Serial monitor outputs
+**/serial_*.txt
+**/anchor_*.txt
+**/tag_*.txt
+
+# Python cache
+**/__pycache__/
+**/*.pyc
+
+# Build artifacts
+**/*.hex
+**/*.elf
+**/*.bin
+
+# Editor files
+**/.vscode/
+**/.idea/
+**/*.swp
+**/*~
+
+# OS files
+**/.DS_Store
+**/Thumbs.db

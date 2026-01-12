@@ -1,0 +1,17 @@
+--- DW1000.cpp.orig	2026-01-11 00:00:00.000000000 +0000
++++ DW1000.cpp	2026-01-11 00:00:00.000000000 +0000
+@@ -990,10 +990,10 @@
+ }
+
+ void DW1000Class::interruptOnReceiveFailed(boolean val) {
+-	setBit(_sysmask, LEN_SYS_STATUS, LDEERR_BIT, val);
+-	setBit(_sysmask, LEN_SYS_STATUS, RXFCE_BIT, val);
+-	setBit(_sysmask, LEN_SYS_STATUS, RXPHE_BIT, val);
+-	setBit(_sysmask, LEN_SYS_STATUS, RXRFSL_BIT, val);
++	setBit(_sysmask, LEN_SYS_MASK, LDEERR_BIT, val);
++	setBit(_sysmask, LEN_SYS_MASK, RXFCE_BIT, val);
++	setBit(_sysmask, LEN_SYS_MASK, RXPHE_BIT, val);
++	setBit(_sysmask, LEN_SYS_MASK, RXRFSL_BIT, val);
+ }
+
+ void DW1000Class::interruptOnReceiveTimeout(boolean val) {

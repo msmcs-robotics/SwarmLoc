@@ -1,0 +1,212 @@
+============================================================
+DW1000Ranging TAG/ANCHOR Test Results
+============================================================
+
+Test Date: 2026-01-11
+Test Duration: 180 seconds (3 minutes)
+Baud Rate: 115200
+Library: arduino-dw1000 v0.9 (DW1000Ranging)
+
+Hardware Configuration:
+- Anchor: Arduino Uno on /dev/ttyACM0, Address: 82:17:5B:D5:A9:9A:E2:9C
+- Tag: Arduino Uno on /dev/ttyACM1, Address: 7D:00:22:EA:82:60:3B:9C
+- Mode: LONGDATA_RANGE_ACCURACY
+- IRQ Pin: D2 (INT0)
+- RST Pin: D9
+- SS Pin: D10
+
+============================================================
+RAW OUTPUT - ANCHOR (/dev/ttyACM0)
+============================================================
+
+[12:06:05.320] device address: 82:17:5B:D5:A9:9A:E2:9C
+[12:06:05.320] ### ANCHOR ###
+
+Total Lines Captured: 2
+Duration: 180.0 seconds
+No additional output after initialization
+
+============================================================
+RAW OUTPUT - TAG (/dev/ttyACM1)
+============================================================
+
+[12:06:05.968] device address: 7D:00:22:EA:82:60:3B:9C
+[12:06:05.968] ### TAG ###
+
+Total Lines Captured: 2
+Duration: 180.0 seconds
+No additional output after initialization
+
+============================================================
+ANALYSIS
+============================================================
+
+Status: FAILED - No Ranging Communication
+
+Observations:
+1. ✅ Both devices initialized successfully
+2. ✅ Device addresses printed correctly
+3. ✅ Roles assigned (ANCHOR and TAG)
+4. ❌ No "blink" messages from anchor (tag discovery)
+5. ❌ No "ranging init" messages from tag (anchor discovery)
+6. ❌ No range measurements reported
+7. ❌ No RX power measurements
+8. ❌ No error messages printed
+
+Expected Behavior (from code analysis):
+- Anchor should print "blink; 1 device added !" when detecting tag
+- Tag should print "ranging init; 1 device added !" when finding anchor
+- Both should print range measurements with distance and RX power
+- Debug version should print "ALIVE - Loop count" every 5 seconds
+
+Actual Behavior:
+- Only initialization messages printed
+- No loop activity detected
+- Devices appear to hang or reset after setup()
+
+============================================================
+COMPARISON WITH DEBUG VERSIONS
+============================================================
+
+Test Procedure:
+1. Created debug versions with verbose output
+   - test_06_anchor_debug.ino
+   - test_06_tag_debug.ino
+2. Added "ALIVE" heartbeat messages every 5 seconds
+3. Added detailed initialization logging
+4. Ready for upload and testing
+
+Next Steps:
+1. Upload debug versions to verify if loop() is running
+2. Check if DW1000 initialization completes successfully
+3. Monitor for any crashes or hangs
+4. Test with different baud rates if needed
+
+============================================================
+TROUBLESHOOTING CHECKS
+============================================================
+
+[✓] Devices connected and responding
+[✓] Correct baud rate (115200) used
+[✓] Serial ports accessible (/dev/ttyACM0, /dev/ttyACM1)
+[✓] Code compiles without errors
+[✓] Upload successful to both devices
+[?] DW1000 chip initialization (unknown - not printed)
+[?] IRQ pin functioning (unknown - no interrupts fired)
+[?] Loop() executing (unknown - no heartbeat)
+[?] Hardware connections (unknown - visual inspection needed)
+
+============================================================
+POSSIBLE ROOT CAUSES
+============================================================
+
+1. Library Bug - Interrupt Mask Corruption
+   - Known issue in DW1000.cpp:interruptOnReceiveFailed()
+   - Uses wrong buffer length (LEN_SYS_STATUS vs LEN_SYS_MASK)
+   - Corrupts interrupt mask register
+   - Prevents interrupts from firing
+   - Impact: DW1000Ranging depends on interrupts for operation
+
+2. Hardware Issue - IRQ Pin Not Connected
+   - IRQ pin (D2) may not be properly connected
+   - DW1000 cannot signal Arduino when events occur
+   - No interrupts = no ranging messages
+   - Requires physical inspection of hardware
+
+3. Power Issue - Insufficient Current
+   - Two DW1000 modules may draw too much current
+   - Could cause brownouts or resets
+   - USB power may not be sufficient
+   - Symptoms: Continuous resets, no stable operation
+
+4. Device Hang - Infinite Wait Loop
+   - Code may be waiting for interrupt that never comes
+   - Could be stuck in receiver() function
+   - No timeout mechanism
+   - Appears as "hung" program
+
+5. SPI Communication Failure
+   - DW1000 chip not responding over SPI
+   - Initialization may fail silently
+   - No error reporting in current code
+   - Would prevent all operations
+
+============================================================
+RECOMMENDED ACTIONS
+============================================================
+
+Priority 1: Upload Debug Versions
+- Upload test_06_anchor_debug.ino and test_06_tag_debug.ino
+- Monitor for "ALIVE" heartbeat messages
+- Verify loop() is executing
+- Check for initialization messages
+
+Priority 2: Check Hardware Connections
+- Verify IRQ pin (D2) is connected to DW1000 module
+- Check RST pin (D9) connection
+- Inspect SPI connections (MOSI, MISO, SCK, SS)
+- Look for loose wires or poor contacts
+
+Priority 3: Apply Library Fix
+- Fix interruptOnReceiveFailed() bug in DW1000.cpp
+- Change LEN_SYS_STATUS to LEN_SYS_MASK (4 occurrences)
+- Recompile and test
+- May resolve interrupt issues
+
+Priority 4: Power Supply Check
+- Try external 5V power supply for Arduino
+- Test with single device first
+- Measure current draw during operation
+- Ensure adequate power delivery
+
+Priority 5: Test with Basic Examples
+- Try BasicConnectivityTest to verify chip responds
+- Test interrupt-free examples
+- Isolate if issue is with ranging or interrupts
+- Build confidence in hardware
+
+============================================================
+FILES CREATED
+============================================================
+
+Test Files:
+- test_06_ranging/test_06_anchor.ino (original)
+- test_06_ranging/test_06_tag.ino (original)
+- test_06_ranging/test_06_anchor_debug.ino (debug version)
+- test_06_ranging/test_06_tag_debug.ino (debug version)
+
+Scripts:
+- test_06_ranging/monitor_serial.py (Python serial monitor)
+- test_06_ranging/check_library.py (Library test script)
+- test_06_ranging/run_ranging_test.sh (Shell test script)
+
+Output:
+- test_06_ranging/anchor_output.txt (captured serial data)
+- test_06_ranging/tag_output.txt (captured serial data)
+- test_06_ranging/RESULTS.txt (this file)
+
+============================================================
+CONCLUSION
+============================================================
+
+Test Result: FAILED
+
+The DW1000Ranging test did not produce any ranging measurements.
+Both devices initialized correctly but did not proceed to the
+main ranging loop. This suggests either:
+
+1. A critical library bug preventing operation (most likely)
+2. Hardware connection issue with IRQ pin
+3. Power supply insufficiency
+4. Silent initialization failure
+
+The debug versions created should help identify which of these
+is the root cause. The known library bug in interrupt handling
+is the most probable culprit based on previous testing with
+BasicSender/Receiver showing identical symptoms.
+
+Next Session Action: Upload debug versions and continue investigation.
+
+============================================================
+End of Results
+============================================================

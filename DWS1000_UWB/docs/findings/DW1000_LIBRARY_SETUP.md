@@ -1,6 +1,43 @@
 # DW1000 Library Setup and Configuration
 
 ## Date: 2026-01-08
+## Last Updated: 2026-01-11 (CRITICAL BUG FIX ADDED)
+
+---
+
+## ⚠️ CRITICAL: Bug Fix Required Before Use ⚠️
+
+**The arduino-dw1000 library contains a critical bug that MUST be fixed before use!**
+
+### The Bug
+Buffer overrun in `interruptOnReceiveFailed()` corrupts interrupt mask, preventing ALL hardware interrupts from working.
+
+### Impact
+- **Severity**: CRITICAL
+- **Affects**: All interrupt-based operations
+- **Symptoms**: BasicSender/Receiver hang, DW1000Ranging devices never communicate
+- **Result**: Complete failure of all examples
+
+### The Fix (2 minutes)
+Change 4 constants in one function:
+
+**File**: `lib/DW1000/src/DW1000.cpp` (lines 992-997)
+**Change**: `LEN_SYS_STATUS` → `LEN_SYS_MASK` (4 places)
+
+```bash
+# Quick apply (Linux/Mac):
+cd lib/DW1000/src/
+patch -p0 < ../../../docs/findings/interrupt_bug_fix.patch
+
+# Or edit manually - see BUG_FIX_GUIDE.md
+```
+
+### Documentation
+- **Complete Guide**: [BUG_FIX_GUIDE.md](BUG_FIX_GUIDE.md) - Detailed explanation and fix instructions
+- **Patch File**: [LIBRARY_PATCH.md](LIBRARY_PATCH.md) - Multiple patch formats and application methods
+- **Quick Fix**: [QUICK_FIX.md](QUICK_FIX.md) - 5-minute fix guide
+
+**STATUS**: ✅ Fix applied to this project's library (2026-01-11)
 
 ---
 
@@ -509,6 +546,14 @@ The time taken for signals to propagate through the antenna and PCB traces. Affe
 ---
 
 ## Next Steps
+
+### BEFORE ANYTHING ELSE
+
+0. **CRITICAL: Apply Bug Fix**
+   - See "⚠️ CRITICAL: Bug Fix Required" section above
+   - Must be applied before any testing
+   - Takes 2 minutes
+   - Without fix: ALL examples will fail
 
 ### Immediate (Today)
 

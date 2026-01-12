@@ -1,0 +1,194 @@
+[
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/FrameworkArduino/CDC.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/CDC.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/CDC.cpp",
+        "output": ".pio/build/uno/FrameworkArduino/CDC.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/FrameworkArduino/HardwareSerial.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/HardwareSerial.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/HardwareSerial.cpp",
+        "output": ".pio/build/uno/FrameworkArduino/HardwareSerial.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/FrameworkArduino/HardwareSerial0.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/HardwareSerial0.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/HardwareSerial0.cpp",
+        "output": ".pio/build/uno/FrameworkArduino/HardwareSerial0.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/FrameworkArduino/HardwareSerial1.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/HardwareSerial1.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/HardwareSerial1.cpp",
+        "output": ".pio/build/uno/FrameworkArduino/HardwareSerial1.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/FrameworkArduino/HardwareSerial2.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/HardwareSerial2.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/HardwareSerial2.cpp",
+        "output": ".pio/build/uno/FrameworkArduino/HardwareSerial2.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/FrameworkArduino/HardwareSerial3.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/HardwareSerial3.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/HardwareSerial3.cpp",
+        "output": ".pio/build/uno/FrameworkArduino/HardwareSerial3.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/FrameworkArduino/IPAddress.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/IPAddress.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/IPAddress.cpp",
+        "output": ".pio/build/uno/FrameworkArduino/IPAddress.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/FrameworkArduino/PluggableUSB.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/PluggableUSB.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/PluggableUSB.cpp",
+        "output": ".pio/build/uno/FrameworkArduino/PluggableUSB.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/FrameworkArduino/Print.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/Print.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/Print.cpp",
+        "output": ".pio/build/uno/FrameworkArduino/Print.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/FrameworkArduino/Stream.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/Stream.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/Stream.cpp",
+        "output": ".pio/build/uno/FrameworkArduino/Stream.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/FrameworkArduino/Tone.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/Tone.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/Tone.cpp",
+        "output": ".pio/build/uno/FrameworkArduino/Tone.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/FrameworkArduino/USBCore.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/USBCore.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/USBCore.cpp",
+        "output": ".pio/build/uno/FrameworkArduino/USBCore.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-gcc -o .pio/build/uno/FrameworkArduino/WInterrupts.c.o -c -std=gnu11 -fno-fat-lto-objects -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/WInterrupts.c",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/WInterrupts.c",
+        "output": ".pio/build/uno/FrameworkArduino/WInterrupts.c.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/FrameworkArduino/WMath.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/WMath.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/WMath.cpp",
+        "output": ".pio/build/uno/FrameworkArduino/WMath.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/FrameworkArduino/WString.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/WString.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/WString.cpp",
+        "output": ".pio/build/uno/FrameworkArduino/WString.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/FrameworkArduino/abi.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/abi.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/abi.cpp",
+        "output": ".pio/build/uno/FrameworkArduino/abi.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-gcc -o .pio/build/uno/FrameworkArduino/hooks.c.o -c -std=gnu11 -fno-fat-lto-objects -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/hooks.c",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/hooks.c",
+        "output": ".pio/build/uno/FrameworkArduino/hooks.c.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/FrameworkArduino/main.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/main.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/main.cpp",
+        "output": ".pio/build/uno/FrameworkArduino/main.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/FrameworkArduino/new.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/new.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/new.cpp",
+        "output": ".pio/build/uno/FrameworkArduino/new.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-gcc -o .pio/build/uno/FrameworkArduino/wiring.c.o -c -std=gnu11 -fno-fat-lto-objects -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/wiring.c",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/wiring.c",
+        "output": ".pio/build/uno/FrameworkArduino/wiring.c.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-gcc -o .pio/build/uno/FrameworkArduino/wiring_analog.c.o -c -std=gnu11 -fno-fat-lto-objects -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/wiring_analog.c",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/wiring_analog.c",
+        "output": ".pio/build/uno/FrameworkArduino/wiring_analog.c.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-gcc -o .pio/build/uno/FrameworkArduino/wiring_digital.c.o -c -std=gnu11 -fno-fat-lto-objects -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/wiring_digital.c",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/wiring_digital.c",
+        "output": ".pio/build/uno/FrameworkArduino/wiring_digital.c.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-gcc -mmcu=atmega328p -x assembler-with-cpp -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard -c -o .pio/build/uno/FrameworkArduino/wiring_pulse.S.o /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/wiring_pulse.S",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/wiring_pulse.S",
+        "output": ".pio/build/uno/FrameworkArduino/wiring_pulse.S.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-gcc -o .pio/build/uno/FrameworkArduino/wiring_pulse.c.o -c -std=gnu11 -fno-fat-lto-objects -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/wiring_pulse.c",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/wiring_pulse.c",
+        "output": ".pio/build/uno/FrameworkArduino/wiring_pulse.c.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-gcc -o .pio/build/uno/FrameworkArduino/wiring_shift.c.o -c -std=gnu11 -fno-fat-lto-objects -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/wiring_shift.c",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino/wiring_shift.c",
+        "output": ".pio/build/uno/FrameworkArduino/wiring_shift.c.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/libe82/SPI/SPI.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -I/home/devel/.platformio/packages/framework-arduino-avr/libraries/SPI/src -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard /home/devel/.platformio/packages/framework-arduino-avr/libraries/SPI/src/SPI.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "/home/devel/.platformio/packages/framework-arduino-avr/libraries/SPI/src/SPI.cpp",
+        "output": ".pio/build/uno/libe82/SPI/SPI.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/liba98/DW1000/DW1000.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -I/home/devel/.platformio/packages/framework-arduino-avr/libraries/SPI/src -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard lib/DW1000/src/DW1000.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "lib/DW1000/src/DW1000.cpp",
+        "output": ".pio/build/uno/liba98/DW1000/DW1000.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/liba98/DW1000/DW1000Device.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -I/home/devel/.platformio/packages/framework-arduino-avr/libraries/SPI/src -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard lib/DW1000/src/DW1000Device.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "lib/DW1000/src/DW1000Device.cpp",
+        "output": ".pio/build/uno/liba98/DW1000/DW1000Device.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/liba98/DW1000/DW1000Mac.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -I/home/devel/.platformio/packages/framework-arduino-avr/libraries/SPI/src -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard lib/DW1000/src/DW1000Mac.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "lib/DW1000/src/DW1000Mac.cpp",
+        "output": ".pio/build/uno/liba98/DW1000/DW1000Mac.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/liba98/DW1000/DW1000Ranging.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -I/home/devel/.platformio/packages/framework-arduino-avr/libraries/SPI/src -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard lib/DW1000/src/DW1000Ranging.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "lib/DW1000/src/DW1000Ranging.cpp",
+        "output": ".pio/build/uno/liba98/DW1000/DW1000Ranging.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/liba98/DW1000/DW1000Time.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -I/home/devel/.platformio/packages/framework-arduino-avr/libraries/SPI/src -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard lib/DW1000/src/DW1000Time.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "lib/DW1000/src/DW1000Time.cpp",
+        "output": ".pio/build/uno/liba98/DW1000/DW1000Time.cpp.o"
+    },
+    {
+        "command": "/home/devel/.platformio/packages/toolchain-atmelavr/bin/avr-g++ -o .pio/build/uno/src/main.cpp.o -c -std=gnu++11 -fno-exceptions -fno-threadsafe-statics -fpermissive -std=gnu++11 -mmcu=atmega328p -Os -Wall -ffunction-sections -fdata-sections -flto -DPLATFORMIO=60118 -DARDUINO_AVR_UNO -DF_CPU=16000000L -DARDUINO_ARCH_AVR -DARDUINO=10808 -Isrc -I/home/devel/.platformio/packages/framework-arduino-avr/libraries/SPI/src -Ilib/DW1000/src -I/home/devel/.platformio/packages/framework-arduino-avr/cores/arduino -I/home/devel/.platformio/packages/framework-arduino-avr/variants/standard src/main.cpp",
+        "directory": "/home/devel/Desktop/SwarmLoc/DWS1000_UWB",
+        "file": "src/main.cpp",
+        "output": ".pio/build/uno/src/main.cpp.o"
+    }
+]

@@ -1,0 +1,26 @@
+==================================================================
+DW1000 Ranging Test - Hardware Verification
+Date: Sun Jan 11 03:24:48 PM EST 2026
+Test Duration: 180 seconds (3 minutes)
+==================================================================
+
+Starting monitors for both devices...
+TAG: /dev/ttyACM1
+ANCHOR: /dev/ttyACM0
+
+[TAG] Starting monitor on /dev/ttyACM1
+[ANCHOR] Starting monitor on /dev/ttyACM0
+15:24:52 [ANCHOR] DW1000 Ranging Test (Bug Fixed)
+15:24:52 [ANCHOR] Mode: ANCHOR
+15:24:52 [TAG] DW1000 Ranging Test (Bug Fixed)
+15:24:52 [TAG] Mode: TAG
+15:24:52 [ANCHOR] device address: 82:17:5B:D5:A9:9A:E2:9C
+15:24:52 [ANCHOR] ### ANCHOR ###
+15:24:52 [ANCHOR] ANCHOR ready
+15:24:52 [TAG] device address: 7D:00:22:EA:82:60:3B:9C
+15:24:52 [TAG] ### TAG ###
+15:24:52 [TAG] TAG ready
+
+==================================================================
+Test completed at: Sun Jan 11 03:27:48 PM EST 2026
+==================================================================
