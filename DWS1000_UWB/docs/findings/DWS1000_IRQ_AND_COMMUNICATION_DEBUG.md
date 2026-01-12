@@ -185,6 +185,61 @@ See [DW1000_LIBRARY_ALTERNATIVES.md](DW1000_LIBRARY_ALTERNATIVES.md) for details
 
 ---
 
+## IMPORTANT DISCOVERY: Library Defaults May Be Correct
+
+### New Finding (Late Session)
+
+After reviewing the user's **archive code** (`archive/initiator/initiator.ino`) and the DW1000-ng library examples, we discovered:
+
+**ALL working code uses PIN_RST=9, PIN_IRQ=2 (library defaults) - NOT D7/D8!**
+
+This contradicts the Qorvo forum post that suggested D7/D8.
+
+### Evidence
+
+1. **archive/initiator.ino** (user's previous working code):
+   ```cpp
+   const uint8_t PIN_RST = 9;
+   const uint8_t PIN_IRQ = 2;
+   const uint8_t PIN_SS = SS;
+   ```
+
+2. **archive/responder.ino** (user's previous working code):
+   ```cpp
+   const uint8_t PIN_RST = 9;
+   const uint8_t PIN_IRQ = 2;
+   const uint8_t PIN_SS = SS;
+   ```
+
+3. **DW1000-ng library examples** (all use same defaults):
+   ```cpp
+   const uint8_t PIN_RST = 9;
+   const uint8_t PIN_IRQ = 2;
+   const uint8_t PIN_SS = SS;
+   ```
+
+### Updated Hypothesis
+
+The DWS1000 shield may actually route IRQ to D2 and RST to D9 (library defaults), not D8/D7 as the forum suggested. The forum post may have been:
+- For a different hardware revision
+- Incorrect
+- For a different shield variant
+
+### Next Test: Remove Jumper Wire
+
+**ACTION REQUIRED:**
+1. Remove the jumper wire D8→D2 from both Arduinos
+2. Upload the new firmware (using PIN_RST=9, PIN_IRQ=2)
+3. Test if interrupts now work
+
+The new firmware in `src/main.cpp` has been updated to:
+- Use library default pins (RST=9, IRQ=2, SS=10)
+- Use interrupt-based operation (not polling)
+- Read data inside ISR to prevent corruption
+- Display clear diagnostics about whether IRQ is working
+
+---
+
 ## Sources
 
 - [Qorvo Forum: Arduino Uno with DWS1000](https://forum.qorvo.com/t/arduino-uno-with-dws1000/10212)

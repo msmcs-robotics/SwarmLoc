@@ -1,0 +1,317 @@
+/**
+ * DW1000-ng Library Test - Polling Mode
+ *
+ * Tests the F-Army arduino-dw1000-ng library with the DWS1000 shield.
+ * Uses polling mode (initializeNoInterrupt) since IRQ requires jumper D8->D2.
+ *
+ * DWS1000 Shield Pin Configuration:
+ *   RST = D7, SS = D10, SPI = D11/12/13
+ *   IRQ = D2 (via jumper from D8)
+ *
+ * This test demonstrates:
+ *   1. Basic connectivity check (read device ID)
+ *   2. Polling-based TX/RX (no interrupts)
+ *   3. Using getReceivedData() and isReceiveDone()
+ *
+ * Library comparison:
+ *   - Original DW1000: Uses getData(), needs manual status polling
+ *   - DW1000-ng: Uses getReceivedData(), has initializeNoInterrupt()
+ *
+ * To use this test:
+ *   1. Rename main.cpp to main.cpp.bak
+ *   2. Rename this file to main.cpp
+ *   3. Update platformio.ini lib_extra_dirs or build_flags for DW1000-ng
+ */
+
+#include <Arduino.h>
+#include <SPI.h>
+#include <DW1000Ng.hpp>
+
+// DWS1000 Shield pins
+const uint8_t PIN_RST = 7;   // Reset pin
+const uint8_t PIN_IRQ = 2;   // IRQ pin (needs jumper D8->D2)
+const uint8_t PIN_SS = 10;   // SPI Slave Select
+
+// Test mode: true = transmitter, false = receiver
+#define IS_TRANSMITTER false
+
+// Message buffer
+#define MSG_LEN 32
+byte rxData[MSG_LEN];
+String rxMessage;
+
+unsigned long txCount = 0;
+unsigned long rxCount = 0;
+unsigned long errCount = 0;
+unsigned long lastAction = 0;
+unsigned long lastStats = 0;
+
+// DW1000 configuration
+device_configuration_t DEFAULT_CONFIG = {
+    false,                      // extendedFrameLength
+    true,                       // receiverAutoReenable
+    true,                       // smartPower
+    true,                       // frameCheck
+    false,                      // nlos
+    SFDMode::STANDARD_SFD,
+    Channel::CHANNEL_5,
+    DataRate::RATE_850KBPS,
+    PulseFrequency::FREQ_16MHZ,
+    PreambleLength::LEN_256,
+    PreambleCode::CODE_3
+};
+
+void printDeviceInfo() {
+    char msg[128];
+
+    DW1000Ng::getPrintableDeviceIdentifier(msg);
+    Serial.print("Device ID: ");
+    Serial.println(msg);
+
+    DW1000Ng::getPrintableExtendedUniqueIdentifier(msg);
+    Serial.print("Unique ID: ");
+    Serial.println(msg);
+
+    DW1000Ng::getPrintableNetworkIdAndShortAddress(msg);
+    Serial.print("Network ID & Address: ");
+    Serial.println(msg);
+
+    DW1000Ng::getPrintableDeviceMode(msg);
+    Serial.print("Device Mode: ");
+    Serial.println(msg);
+}
+
+void transmitPing() {
+    String data = "PING #" + String(txCount + 1);
+    DW1000Ng::setTransmitData(data);
+    DW1000Ng::startTransmit();
+}
+
+void transmitPong() {
+    String data = "PONG #" + String(rxCount);
+    DW1000Ng::setTransmitData(data);
+    DW1000Ng::startTransmit();
+}
+
+void setup() {
+    Serial.begin(115200);
+    delay(2000);
+
+    Serial.println();
+    Serial.println("=============================================");
+    Serial.println("DW1000-ng Library Test (F-Army fork)");
+    Serial.println(IS_TRANSMITTER ? "Mode: TRANSMITTER" : "Mode: RECEIVER");
+    Serial.println("=============================================");
+    Serial.println();
+
+    // Test 1: Initialize without interrupt (polling mode)
+    Serial.println("[INIT] Starting DW1000-ng (polling mode)...");
+
+    // Option A: No interrupt mode
+    DW1000Ng::initializeNoInterrupt(PIN_SS, PIN_RST);
+
+    // Option B: With interrupt (uncomment if jumper D8->D2 installed)
+    // DW1000Ng::initialize(PIN_SS, PIN_IRQ, PIN_RST);
+
+    Serial.println("[INIT] DW1000Ng initialized!");
+
+    // Apply configuration
+    DW1000Ng::applyConfiguration(DEFAULT_CONFIG);
+
+    // Set network params
+    DW1000Ng::setDeviceAddress(IS_TRANSMITTER ? 1 : 2);
+    DW1000Ng::setNetworkId(0xDECA);
+    DW1000Ng::setAntennaDelay(16436);  // Default calibration value
+
+    Serial.println("[INIT] Configuration applied");
+    Serial.println();
+
+    // Test 2: Print device info
+    Serial.println("--- Device Information ---");
+    printDeviceInfo();
+    Serial.println();
+
+    // Check for valid device ID
+    char deviceId[32];
+    DW1000Ng::getPrintableDeviceIdentifier(deviceId);
+    if (strstr(deviceId, "DECA") == NULL) {
+        Serial.println("[FAIL] DW1000 not detected! Check wiring.");
+        while(1) {
+            delay(1000);
+            Serial.println("Halted - DW1000 not found");
+        }
+    }
+    Serial.println("[PASS] DW1000 detected via SPI");
+
+    // Start receiver if in RX mode
+    if (!IS_TRANSMITTER) {
+        Serial.println("[INIT] Starting receiver...");
+        DW1000Ng::startReceive();
+    }
+
+    Serial.println();
+    Serial.println("=============================================");
+    Serial.println("RUNNING - Polling for events");
+    Serial.println("=============================================");
+    Serial.println();
+}
+
+void loop() {
+    if (IS_TRANSMITTER) {
+        // === TRANSMITTER MODE ===
+        if (millis() - lastAction >= 1000) {
+            lastAction = millis();
+            txCount++;
+
+            Serial.print("[TX #");
+            Serial.print(txCount);
+            Serial.print("] Sending PING... ");
+
+            transmitPing();
+
+            // Poll for TX complete using isTransmitDone()
+            unsigned long start = millis();
+            bool txDone = false;
+            while (millis() - start < 100) {
+                if (DW1000Ng::isTransmitDone()) {
+                    DW1000Ng::clearTransmitStatus();
+                    txDone = true;
+                    break;
+                }
+            }
+
+            if (txDone) {
+                Serial.println("SENT!");
+
+                // Wait for PONG response
+                Serial.print("[RX] Waiting for PONG... ");
+                DW1000Ng::startReceive();
+
+                start = millis();
+                bool rxDone = false;
+                while (millis() - start < 500) {
+                    if (DW1000Ng::isReceiveDone()) {
+                        DW1000Ng::clearReceiveStatus();
+                        rxDone = true;
+                        break;
+                    }
+                    if (DW1000Ng::isReceiveFailed()) {
+                        DW1000Ng::clearReceiveFailedStatus();
+                        break;
+                    }
+                    if (DW1000Ng::isReceiveTimeout()) {
+                        DW1000Ng::clearReceiveTimeoutStatus();
+                        break;
+                    }
+                }
+
+                if (rxDone) {
+                    // Use DW1000-ng's getReceivedData()
+                    DW1000Ng::getReceivedData(rxMessage);
+                    Serial.print("GOT: ");
+                    Serial.println(rxMessage);
+
+                    if (rxMessage.startsWith("PONG")) {
+                        rxCount++;
+                        Serial.println("[SUCCESS] PONG received!");
+                    }
+                } else {
+                    Serial.println("TIMEOUT");
+                    errCount++;
+                }
+            } else {
+                Serial.println("TX FAILED!");
+                errCount++;
+            }
+            Serial.println();
+        }
+    } else {
+        // === RECEIVER MODE ===
+
+        // Poll for receive complete using isReceiveDone()
+        if (DW1000Ng::isReceiveDone()) {
+            rxCount++;
+            DW1000Ng::clearReceiveStatus();
+
+            // Get received data - DW1000-ng style
+            uint16_t len = DW1000Ng::getReceivedDataLength();
+            DW1000Ng::getReceivedData(rxData, len);
+
+            Serial.print("[RX #");
+            Serial.print(rxCount);
+            Serial.print("] Len=");
+            Serial.print(len);
+            Serial.print(" Data: ");
+
+            // Print as string
+            rxData[len < MSG_LEN ? len : MSG_LEN-1] = 0;  // Null terminate
+            Serial.println((char*)rxData);
+
+            // Check for PING and respond with PONG
+            if (strncmp((char*)rxData, "PING", 4) == 0) {
+                Serial.print("[TX] Sending PONG... ");
+
+                transmitPong();
+
+                // Poll for TX complete
+                unsigned long start = millis();
+                bool txDone = false;
+                while (millis() - start < 100) {
+                    if (DW1000Ng::isTransmitDone()) {
+                        DW1000Ng::clearTransmitStatus();
+                        txDone = true;
+                        break;
+                    }
+                }
+
+                if (txDone) {
+                    txCount++;
+                    Serial.println("SENT!");
+                } else {
+                    Serial.println("FAILED!");
+                    errCount++;
+                }
+            }
+
+            // Restart receiver
+            DW1000Ng::startReceive();
+            Serial.println();
+        }
+
+        // Handle receive errors
+        if (DW1000Ng::isReceiveFailed()) {
+            errCount++;
+            Serial.println("[ERR] Receive failed - restarting...");
+            DW1000Ng::clearReceiveFailedStatus();
+            DW1000Ng::startReceive();
+        }
+
+        if (DW1000Ng::isReceiveTimeout()) {
+            // Timeout is expected if no transmitter, just restart
+            DW1000Ng::clearReceiveTimeoutStatus();
+            DW1000Ng::startReceive();
+        }
+    }
+
+    // Print stats every 10 seconds
+    if (millis() - lastStats >= 10000) {
+        lastStats = millis();
+        Serial.println("--- STATISTICS ---");
+        Serial.print("TX: ");
+        Serial.print(txCount);
+        Serial.print(" | RX: ");
+        Serial.print(rxCount);
+        Serial.print(" | Errors: ");
+        Serial.println(errCount);
+
+        // Print signal quality if we've received anything
+        if (rxCount > 0) {
+            Serial.print("Last RX Power: ");
+            Serial.print(DW1000Ng::getReceivePower());
+            Serial.println(" dBm");
+            Serial.print("Last RX Quality: ");
+            Serial.println(DW1000Ng::getReceiveQuality());
+        }
+        Serial.println();
+    }
+}
