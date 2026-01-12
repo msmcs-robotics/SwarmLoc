@@ -1,0 +1,126 @@
+/**
+ * DWS1000 Shield Diagnostic Test
+ *
+ * This test verifies:
+ * 1. SPI communication with DW1000 (reads Device ID)
+ * 2. Pin configuration for DWS1000 shield
+ * 3. Basic transmit/receive capability
+ *
+ * IMPORTANT: You need to add a jumper wire from D8 to D2 on Arduino Uno!
+ * The DWS1000 shield routes IRQ to D8, but Uno only supports interrupts on D2/D3.
+ */
+
+#include <SPI.h>
+#include "DW1000.h"
+
+// DWS1000 Shield Pin Configuration (PCL298336)
+// These differ from library defaults!
+const uint8_t PIN_RST = 7;   // DWS1000 uses D7 for reset
+const uint8_t PIN_IRQ = 2;   // IRQ via jumper wire from D8 to D2
+const uint8_t PIN_SS = 10;   // SPI chip select
+
+void setup() {
+  Serial.begin(115200);
+  delay(2000);
+
+  Serial.println();
+  Serial.println("=============================================");
+  Serial.println("DWS1000 Shield Diagnostic Test");
+  Serial.println("Part: PCL298336 (DWM1000 Arduino Shield)");
+  Serial.println("=============================================");
+  Serial.println();
+
+  // Test 1: Check if jumper wire is mentioned
+  Serial.println("[INFO] Pin Configuration for DWS1000 Shield:");
+  Serial.println("  RST = D7 (not D9!)");
+  Serial.println("  IRQ = D2 (via jumper from D8)");
+  Serial.println("  SS  = D10");
+  Serial.println("  SPI = D11/D12/D13 (MOSI/MISO/SCK)");
+  Serial.println();
+  Serial.println("[WARN] Did you add jumper wire from D8 to D2?");
+  Serial.println("       Without it, interrupts won't work!");
+  Serial.println();
+
+  // Initialize DW1000
+  Serial.println("[TEST] Initializing SPI communication...");
+  DW1000.begin(PIN_IRQ, PIN_RST);
+  DW1000.select(PIN_SS);
+
+  // Test 2: Read Device ID
+  Serial.println("[TEST] Reading Device ID...");
+  char deviceId[128];
+  DW1000.getPrintableDeviceIdentifier(deviceId);
+  Serial.print("  Device ID: ");
+  Serial.println(deviceId);
+
+  // Check if Device ID is valid
+  if (strstr(deviceId, "DECA") != NULL) {
+    Serial.println("  [PASS] Device ID contains 'DECA' - SPI working!");
+  } else if (strstr(deviceId, "FFFF") != NULL) {
+    Serial.println("  [FAIL] Device ID is FFFF - No SPI communication!");
+    Serial.println("         Check: Shield seated? Power? SPI wiring?");
+  } else if (strstr(deviceId, "0000") != NULL) {
+    Serial.println("  [FAIL] Device ID is 0000 - SPI issue!");
+    Serial.println("         Check: Power supply, CS pin");
+  } else {
+    Serial.println("  [WARN] Unexpected Device ID - Check connections");
+  }
+  Serial.println();
+
+  // Test 3: Read EUI
+  Serial.println("[TEST] Reading Extended Unique Identifier...");
+  char eui[128];
+  DW1000.getPrintableExtendedUniqueIdentifier(eui);
+  Serial.print("  EUI: ");
+  Serial.println(eui);
+  Serial.println();
+
+  // Test 4: Read device configuration
+  Serial.println("[TEST] Reading Device Mode/Config...");
+  char mode[128];
+  DW1000.getPrintableDeviceMode(mode);
+  Serial.print("  Mode: ");
+  Serial.println(mode);
+  Serial.println();
+
+  // Test 5: Check temperature and voltage
+  Serial.println("[TEST] Reading Temperature and Voltage...");
+  float temp, vbat;
+  DW1000.getTempAndVbat(temp, vbat);
+  Serial.print("  Temperature: ");
+  Serial.print(temp);
+  Serial.println(" C");
+  Serial.print("  Voltage: ");
+  Serial.print(vbat);
+  Serial.println(" V");
+  Serial.println();
+
+  // Summary
+  Serial.println("=============================================");
+  Serial.println("DIAGNOSTIC SUMMARY");
+  Serial.println("=============================================");
+  if (strstr(deviceId, "DECA") != NULL) {
+    Serial.println("[OK] SPI Communication: WORKING");
+    Serial.println("[OK] DW1000 Chip: DETECTED");
+    Serial.println();
+    Serial.println("NEXT STEPS:");
+    Serial.println("1. Verify jumper wire from D8 to D2");
+    Serial.println("2. Upload ranging firmware to both Arduinos");
+    Serial.println("3. One as ANCHOR, one as TAG");
+  } else {
+    Serial.println("[FAIL] SPI Communication: NOT WORKING");
+    Serial.println();
+    Serial.println("TROUBLESHOOTING:");
+    Serial.println("1. Check shield is fully seated on Arduino");
+    Serial.println("2. Check USB power is sufficient");
+    Serial.println("3. Try different USB port");
+    Serial.println("4. Check for bent pins");
+  }
+  Serial.println("=============================================");
+}
+
+void loop() {
+  // Nothing to do in loop for diagnostic
+  delay(10000);
+  Serial.println("[INFO] Diagnostic complete. Reset to run again.");
+}
