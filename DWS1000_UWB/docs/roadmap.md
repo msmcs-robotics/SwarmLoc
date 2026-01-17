@@ -1,5 +1,17 @@
 # DWS1000_UWB Project Roadmap
 
+> Last updated: 2026-01-17
+
+## Overview
+
+This roadmap tracks project-level features and milestones. For immediate tasks, see [todo.md](todo.md).
+
+**Note**: No time estimates. Focus on WHAT needs to be done, not WHEN.
+
+**Development Approach**: Open to using multiple libraries and editing them as needed to understand the DWS1000 module. Experimentation encouraged.
+
+---
+
 ## Project Goal
 
 Develop a **UWB-based communication and ranging system for drone swarms** using DW1000 UWB radios with Arduino Uno, enabling:
@@ -1405,3 +1417,187 @@ float calculate_distance(uint64_t t1, uint64_t t2, uint64_t t3, uint64_t t4,
 **Next Action**: User re-seats DW1000 shields and checks antenna connections
 
 **Major Achievement Today**: USB upload issue resolved through systematic troubleshooting! 🎉
+
+---
+
+## Session 2026-01-17: J1 Jumper Discovery & Power Issue Root Cause
+
+### CRITICAL DISCOVERY: Hardware Power Issue Identified
+
+**Problem**: DW1000 RF PLL cannot maintain lock due to power supply noise.
+
+**Root Cause**: Power supply noise exceeds DW1000's <25mV ripple requirement. This is a **hardware limitation that software cannot fully resolve**.
+
+### J1 Jumper Configuration - COMPLETE REFERENCE
+
+The DWS1000 shield has a **3-pin header** near the LED:
+
+```
+┌─────────────────────────────────┐
+│  J1        3V3_ARDUINO   3V3_DCDC  │
+│  (●)────────(●)──────────(●)       │
+│   │          │            │        │
+│   ▼          ▼            ▼        │
+│  DWM1000   Arduino's   Shield's    │
+│  Power     3.3V Rail   DC-DC Conv  │
+│  Input                             │
+└─────────────────────────────────┘
+```
+
+**Jumper Positions & Effects:**
+
+| Jumper Position | Effect | CPLOCK | RFPLL_LL | Stability |
+|-----------------|--------|--------|----------|-----------|
+| J1 → 3V3_ARDUINO | Uses Arduino's 3.3V regulator | Never sets | N/A | Crashes immediately |
+| J1 → 3V3_DCDC | Uses shield's DC-DC converter | Locks initially | SET | Unstable |
+| **NO JUMPER** | DC-DC powers DWM1000 directly | **Locks with DW1000-ng** | SET | **Best option** |
+
+**RECOMMENDED: NO J1 JUMPER** - The DC-DC converter powers the DWM1000 by default (3.2V measured at J1 pin with no jumper).
+
+### Voltage Measurements (Critical Reference)
+
+With **NO J1 jumper** installed:
+
+| Pin | Measured Voltage | Expected | Analysis |
+|-----|------------------|----------|----------|
+| J1 | 3.2V | N/A | DWM1000 getting power from DC-DC ✓ |
+| 3V3_ARDUINO | **2.17V** | 3.3V | **Arduino regulator failing/overloaded** |
+| 3V3_DCDC | 3.3V | 3.3V | Shield DC-DC working correctly ✓ |
+
+**Key Finding**: Arduino's 3.3V regulator outputs only 2.17V (too low!). This explains why J1→3V3_ARDUINO causes immediate CPLOCK failure.
+
+### D8→D2 Jumper Wire (Still Required)
+
+**Separate from J1 issue** - The IRQ jumper wire is still required:
+
+```
+DWS1000 Shield IRQ (D8) ───wire───> Arduino INT0 (D2)
+```
+
+**Why**: The shield routes IRQ to D8, but Arduino Uno only supports hardware interrupts on D2 (INT0) and D3 (INT1).
+
+### Library Comparison: DW1000 vs DW1000-ng
+
+| Feature | DW1000 (original) | DW1000-ng |
+|---------|-------------------|-----------|
+| CPLL lock detect (PLLLDT bit) | **Missing** | ✓ Enabled |
+| XTAL trim from OTP | **Missing** | ✓ Applied |
+| Slow SPI during init | No | ✓ Yes |
+| LDE microcode loading | Basic | ✓ Proper |
+| PLL stability | Poor | Better |
+
+**Recommendation**: Use **DW1000-ng** library (`lib/DW1000-ng/`) for better PLL stability.
+
+**platformio.ini change**:
+```ini
+build_flags = -I lib/DW1000-ng/src -std=gnu++11
+```
+
+### Test Results Summary (2026-01-17)
+
+**DW1000-ng TX/RX Test:**
+- TX sends successfully (TXFRS flag confirms)
+- RX detects 63+ frames in 25 seconds
+- **ALL received data is corrupted garbage**
+- RFPLL_LL flag always set (RF PLL losing lock)
+
+**Device Stability Comparison:**
+
+| Device | CPLOCK | RFPLL_LL | Crashes | Notes |
+|--------|--------|----------|---------|-------|
+| DEV0 (ACM0) | Locks briefly | SET | Frequently | Possible hardware defect |
+| DEV1 (ACM1) | **STAYS SET** | SET | Rare | More stable with DW1000-ng |
+
+### Final Assessment
+
+| Aspect | Status | Notes |
+|--------|--------|-------|
+| SPI Communication | ✓ Working | Device ID reads correctly |
+| CPLOCK (Clock PLL) | ✓ Partial | Locks with DW1000-ng + no J1 |
+| RFPLL (RF PLL) | ✗ **FAILING** | RFPLL_LL always set |
+| RF Transmission | ✓ Working | TXFRS confirms sent |
+| RF Reception | ✓ Working | Frames detected |
+| Data Integrity | ✗ **BROKEN** | All data corrupted |
+
+**Root cause**: Power supply noise causing RF PLL instability. DW1000 requires <25mV ripple. Without capacitors or cleaner power, this cannot be fixed in software.
+
+### Hardware Options to Proceed
+
+**User stated**: "I don't have capacitors, I only have the Arduinos, the shields, and the jumper wires."
+
+**Available Options:**
+
+1. **Add 10-47µF capacitor** between 3V3_DCDC and GND
+   - Best option if capacitor available
+   - Should filter power noise sufficiently
+
+2. **External 3.3V power supply**
+   - Use quality LDO (AMS1117-3.3 or similar)
+   - Bypass Arduino/shield power entirely
+   - 500mA+ current capacity recommended
+
+3. **Try different USB configuration**
+   - Shorter USB cable
+   - Powered USB hub
+   - Different USB ports (rear ports often cleaner)
+
+4. **Migrate to ESP32**
+   - ESP32 has better 3.3V regulation
+   - Native DW1000 library support
+   - More RAM for swarm operations
+   - Longer term but solves power issue
+
+### Test Files Created (2026-01-17)
+
+**DW1000-ng tests:**
+- `tests/test_dw1000ng_simple.cpp` - Basic stability test with status monitoring
+- `tests/test_dw1000ng_tx.cpp` - TX test with crash recovery
+- `tests/test_dw1000ng_rx.cpp` - RX test with frame capture
+
+**Diagnostic tests:**
+- `tests/test_cplock.cpp` - CPLOCK/RFPLL status diagnostic
+- `tests/test_polling_diagnostic/` - Detailed polling test
+
+### Documentation Created (2026-01-17)
+
+- `docs/findings/DW1000_CPLOCK_ISSUE.md` - Complete root cause analysis (267 lines)
+- `docs/findings/DW1000_LIBRARY_REVIEW.md` - Library comparison findings
+- `docs/todo.md` - Updated with current status and options
+
+### What Was Learned
+
+1. **J1 jumper controls DWM1000 power source** - NOT required when using DC-DC
+2. **Arduino's 3.3V regulator is inadequate** (2.17V measured vs 3.3V expected)
+3. **DW1000-ng library has better PLL handling** - CPLOCK stays locked longer
+4. **RFPLL_LL is the remaining blocker** - RF PLL losing lock corrupts all data
+5. **DEV0 shield may be defective** - Crashes while DEV1 is stable
+6. **This is a hardware power issue** - Software can improve but not fully fix
+
+### Session Impact
+
+**Positive:**
+- Comprehensive understanding of hardware architecture
+- Identified exact root cause (power noise → RFPLL_LL)
+- Documented all findings for future reference
+- DW1000-ng provides measurable improvement
+- RF **is** transmitting and receiving (just corrupted)
+
+**Blocking:**
+- Cannot achieve clean data without hardware changes
+- User doesn't have capacitors available
+- Power noise exceeds DW1000's tolerance
+
+### Next Session Priorities
+
+1. **If user obtains capacitor**: Add 10-47µF to 3V3_DCDC and retest
+2. **If user has external 3.3V supply**: Bypass Arduino power entirely
+3. **If neither available**: Begin ESP32 migration planning
+4. **Document**: Continue updating findings as tests progress
+
+---
+
+**Document Version**: 3.0
+**Last Updated**: 2026-01-17 17:30
+**Phase 3 Status**: ⏸️ BLOCKED (Hardware power issue - RFPLL_LL)
+**Root Cause**: Power supply noise causing RF PLL instability
+**Best Current Config**: NO J1 jumper + DW1000-ng library + DEV1 (ACM1) more stable

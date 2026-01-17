@@ -2,10 +2,12 @@
 
 ## Complete UWB Ranging System with Arduino Uno and DW1000
 
-**Last Updated**: 2026-01-08
-**Status**: ✅ Library Installed, Tests Ready
+**Last Updated**: 2026-01-17
+**Status**: Debugging RF communication (uploads working, RX not detecting TX)
 **Hardware**: Arduino Uno + PCL298336 v1.3 (DW1000 chip)
-**Library**: arduino-dw1000 v0.9
+**Library**: arduino-dw1000 v0.9 (editable, open to alternatives)
+
+**Development Approach**: Open to using multiple libraries and editing them as needed to understand the DWS1000 module.
 
 ---
 
@@ -66,6 +68,14 @@
 ---
 
 ## Documentation Index
+
+### Project Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [scope.md](scope.md) | What this project is and isn't |
+| [roadmap.md](roadmap.md) | Feature progress and milestones |
+| [todo.md](todo.md) | Current tasks and blockers |
 
 ### Essential Reading
 
