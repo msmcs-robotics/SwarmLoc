@@ -183,11 +183,20 @@ void DW1000Class::begin(uint8_t irq, uint8_t rst) {
 }
 
 void DW1000Class::manageLDE() {
-	// transfer any ldo tune values
+	// transfer any ldo tune values from OTP to active registers
 	byte ldoTune[LEN_OTP_RDAT];
-	readBytesOTP(0x04, ldoTune); // TODO #define
-	if(ldoTune[0] != 0) {
-		// TODO tuning available, copy over to RAM: use OTP_LDO bit
+	readBytesOTP(0x04, ldoTune);
+	if(ldoTune[0] != 0 && ldoTune[0] != 0xFF) {
+		// LDO tuning available - apply it by setting OTP_LDO bit in AON_CTRL
+		// This transfers factory-calibrated LDO values from OTP to active config
+		byte aonCtrl[LEN_AON_CTRL];
+		memset(aonCtrl, 0, LEN_AON_CTRL);
+		readBytes(AON, AON_CTRL_SUB, aonCtrl, LEN_AON_CTRL);
+		aonCtrl[0] |= 0x40;  // Set OTP_LDO bit (bit 6)
+		writeBytes(AON, AON_CTRL_SUB, aonCtrl, LEN_AON_CTRL);
+		delay(1);
+		aonCtrl[0] &= ~0x40;  // Clear OTP_LDO bit
+		writeBytes(AON, AON_CTRL_SUB, aonCtrl, LEN_AON_CTRL);
 	}
 	// tell the chip to load the LDE microcode
 	// TODO remove clock-related code (PMSC_CTRL) as handled separately

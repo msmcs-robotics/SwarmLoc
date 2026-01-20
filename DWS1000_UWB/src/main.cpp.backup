@@ -1,0 +1,407 @@
+/**
+ * TX/RX Test with LDO Tuning - Fixed Polling Mode
+ *
+ * This test fixes the DW1000 library polling mode bug where isReceiveDone()
+ * and isTransmitDone() check a cached _sysstatus that's never refreshed.
+ * We manually read status register before each check.
+ *
+ * Build: Set MODE_TX or MODE_RX below, then upload to each Arduino
+ * TX: Upload to ACM0
+ * RX: Upload to ACM1
+ */
+
+#include <Arduino.h>
+#include <SPI.h>
+#include <DW1000.h>
+
+// Pin configuration
+const uint8_t PIN_RST = 9;
+const uint8_t PIN_IRQ = 2;
+const uint8_t PIN_SS = SS;
+
+// Register addresses
+#define SYS_STATUS_REG  0x0F
+#define AON_REG         0x2C
+#define AON_CTRL_SUB    0x02
+
+// Status bit positions (from datasheet)
+#define TXFRS_BIT   7   // TX Frame Sent
+#define RXDFR_BIT   13  // RX Data Frame Ready
+#define RXFCG_BIT   14  // RX Frame Check Good
+#define RXFCE_BIT   15  // RX Frame Check Error
+#define RXPHE_BIT   12  // RX PHY Header Error
+#define RXRFSL_BIT  17  // RX Reed-Solomon Error
+#define LDEERR_BIT  18  // LDE Error
+
+// Mode selection - uncomment one:
+//#define MODE_TX 1
+#define MODE_RX 1
+
+// State
+bool ldoApplied = false;
+uint8_t ldoValue = 0;
+
+// Counters
+uint32_t count = 0;
+uint32_t success = 0;
+uint32_t fail = 0;
+
+// Status reading helper - with debug
+uint32_t readStatus() {
+    byte status[5];
+    DW1000.readBytes(SYS_STATUS_REG, 0x00, status, 5);
+    uint32_t val = (uint32_t)status[0] |
+                   ((uint32_t)status[1] << 8) |
+                   ((uint32_t)status[2] << 16) |
+                   ((uint32_t)status[3] << 24);
+
+    // Debug: Print raw bytes occasionally
+    static uint32_t debugCount = 0;
+    if (++debugCount % 100 == 1) {
+        Serial.print(F("[RAW: "));
+        for (int i = 0; i < 5; i++) {
+            if (status[i] < 16) Serial.print("0");
+            Serial.print(status[i], HEX);
+            Serial.print(" ");
+        }
+        Serial.println(F("]"));
+    }
+
+    return val;
+}
+
+void clearStatus(uint32_t bits) {
+    byte clear[5] = {0, 0, 0, 0, 0};
+    clear[0] = bits & 0xFF;
+    clear[1] = (bits >> 8) & 0xFF;
+    clear[2] = (bits >> 16) & 0xFF;
+    clear[3] = (bits >> 24) & 0xFF;
+    DW1000.writeBytes(SYS_STATUS_REG, 0x00, clear, 4);
+}
+
+void applyLDOTuning() {
+    byte ldoTune[4];
+    DW1000.readBytesOTP(0x04, ldoTune);
+    ldoValue = ldoTune[0];
+    Serial.print(F("OTP LDO: 0x"));
+    Serial.println(ldoValue, HEX);
+
+    if (ldoValue != 0 && ldoValue != 0xFF) {
+        byte aonCtrl[4];
+        DW1000.readBytes(AON_REG, AON_CTRL_SUB, aonCtrl, 4);
+        aonCtrl[0] |= 0x40;
+        DW1000.writeBytes(AON_REG, AON_CTRL_SUB, aonCtrl, 4);
+        delay(1);
+        aonCtrl[0] &= ~0x40;
+        DW1000.writeBytes(AON_REG, AON_CTRL_SUB, aonCtrl, 4);
+        ldoApplied = true;
+        Serial.println(F("LDO APPLIED"));
+    }
+}
+
+bool checkPLL(bool clearFirst = true) {
+    // First clear the "lost lock" sticky bits if requested
+    if (clearFirst) {
+        byte clear[4] = {0, 0, 0, 0x03};  // Clear bits 24-25
+        DW1000.writeBytes(SYS_STATUS_REG, 0x00, clear, 4);
+        delay(1);  // Give it a moment
+    }
+
+    // Now read status
+    byte status[5];
+    DW1000.readBytes(SYS_STATUS_REG, 0x00, status, 5);
+    bool cplock = status[0] & 0x02;       // Bit 1: CPLOCK
+    bool rfpllLL = status[3] & 0x01;      // Bit 24: RFPLL lost lock (sticky)
+    bool clkpllLL = status[3] & 0x02;     // Bit 25: CLKPLL lost lock (sticky)
+
+    // Only check CPLOCK - ignore sticky bits for now
+    return cplock;
+}
+
+void setup() {
+    Serial.begin(115200);
+    delay(1000);
+
+#ifdef MODE_TX
+    Serial.println(F("\n=== TX MODE (Fixed Polling) ==="));
+#else
+    Serial.println(F("\n=== RX MODE (Fixed Polling) ==="));
+#endif
+
+    // Init DW1000 - use 0xFF for IRQ pin to disable interrupt handling
+    Serial.println(F("Init DW1000 (no IRQ)..."));
+    DW1000.begin(0xFF, PIN_RST);  // 0xFF = no IRQ
+    DW1000.select(PIN_SS);
+
+    char msg[64];
+    DW1000.getPrintableDeviceIdentifier(msg);
+    Serial.print(F("Device: "));
+    Serial.println(msg);
+
+    // Apply LDO tuning
+    applyLDOTuning();
+
+    // Configure
+    DW1000.newConfiguration();
+    DW1000.setDefaults();
+
+#ifdef MODE_TX
+    DW1000.setDeviceAddress(1);
+#else
+    DW1000.setDeviceAddress(2);
+#endif
+    DW1000.setNetworkId(10);
+
+    // Use fast mode (6.8Mbps) - shorter preamble, less susceptible to noise
+    DW1000.enableMode(DW1000.MODE_SHORTDATA_FAST_LOWPOWER);
+
+    // No frame filtering - receive all
+    DW1000.setFrameFilter(false);
+
+    // Enable frame check (CRC) for data integrity
+    DW1000.suppressFrameCheck(false);
+
+    DW1000.commitConfiguration();
+
+    // CRITICAL: Re-apply LDO tuning AFTER commitConfiguration()
+    Serial.println(F("Re-applying LDO after config..."));
+    applyLDOTuning();
+    delay(5);
+
+    // Lower TX power to reduce current draw (prevent brownout)
+    byte lowPower[4] = {0x15, 0x15, 0x15, 0x15};  // Very low power
+    DW1000.writeBytes(0x1E, 0x00, lowPower, 4);
+    Serial.println(F("TX power lowered"));
+
+    DW1000.getPrintableDeviceMode(msg);
+    Serial.print(F("Mode: "));
+    Serial.println(msg);
+
+    if (checkPLL()) {
+        Serial.println(F("PLL: LOCKED"));
+    } else {
+        Serial.println(F("PLL: WARNING - retrying..."));
+        applyLDOTuning();
+        delay(10);
+        if (checkPLL()) {
+            Serial.println(F("PLL: LOCKED (retry ok)"));
+        } else {
+            Serial.println(F("PLL: STILL WARNING"));
+        }
+    }
+
+    Serial.println(F("Starting...\n"));
+}
+
+#ifdef MODE_TX
+
+void loop() {
+    static uint32_t lastTx = 0;
+
+    if (millis() - lastTx < 2000) {
+        delay(10);
+        return;
+    }
+    lastTx = millis();
+    count++;
+
+    // Simple message
+    char data[16];
+    snprintf(data, sizeof(data), "T%05lu", count);
+
+    Serial.print(F("TX #"));
+    Serial.print(count);
+    Serial.print(F(" \""));
+    Serial.print(data);
+    Serial.print(F("\"..."));
+
+    // Check PLL before transmitting (but don't skip - just warn)
+    if (!checkPLL()) {
+        Serial.print(F(" [PLL?]"));
+    }
+
+    // Transmit (no IRQ handler to worry about now)
+    DW1000.newTransmit();
+    DW1000.setDefaults();
+    DW1000.setData((byte*)data, strlen(data));
+    DW1000.startTransmit();
+
+    // Poll for complete
+    uint32_t t0 = millis();
+    bool sent = false;
+    while (millis() - t0 < 100) {
+        uint32_t status = readStatus();
+        if (status & (1UL << TXFRS_BIT)) {
+            sent = true;
+            Serial.print(F(" S:"));
+            Serial.print(status, HEX);
+            break;
+        }
+        delayMicroseconds(100);
+    }
+
+    // Clear status (no IRQ handler anymore)
+    DW1000.clearTransmitStatus();
+
+    if (sent) {
+        success++;
+        // Clear TX status bits
+        clearStatus((1UL << TXFRS_BIT) | (1UL << 4) | (1UL << 5) | (1UL << 6));
+        Serial.print(F(" OK ("));
+        Serial.print(success);
+        Serial.print(F("/"));
+        Serial.print(count);
+        Serial.println(F(")"));
+    } else {
+        fail++;
+        // Check if device reset by reading device ID
+        char devId[64];
+        DW1000.getPrintableDeviceIdentifier(devId);
+        Serial.print(F(" TIMEOUT dev="));
+        Serial.println(devId);
+        DW1000.idle();
+    }
+}
+
+#else // RX MODE
+
+void loop() {
+    static bool receiving = false;
+    static uint32_t rxStart = 0;
+    static uint32_t lastStatus = 0;
+
+    // Start receive if not already (no IRQ handler to worry about)
+    if (!receiving) {
+        // Clear any pending status first
+        DW1000.clearReceiveStatus();
+        delay(1);
+
+        DW1000.newReceive();
+        DW1000.setDefaults();
+        DW1000.startReceive();
+        receiving = true;
+        rxStart = millis();
+
+        // Wait for receiver to be ready
+        delay(100);
+        Serial.println(F("[RX started]"));
+    }
+
+    // Timeout - restart receiver every 10s
+    if (millis() - rxStart > 10000) {
+        Serial.println(F("[RX timeout - restart]"));
+        DW1000.idle();
+        receiving = false;
+        return;
+    }
+
+    // Wait before reading status - much slower polling
+    delay(50);  // 50ms between polls
+
+    // Read fresh status from hardware
+    uint32_t status = readStatus();
+
+    // Skip if status looks corrupt (0xFFFFFFFF or similar patterns)
+    if (status == 0xFFFFFFFF || (status & 0xFF000000) == 0xFF000000) {
+        // Corrupt read, skip this iteration
+        return;
+    }
+
+    // Check for frame received (RXDFR) or frame check good (RXFCG)
+    bool rxDone = (status & (1UL << RXDFR_BIT)) || (status & (1UL << RXFCG_BIT));
+    if (rxDone) {
+        count++;
+        uint16_t len = DW1000.getDataLength();
+
+        Serial.print(F("RX #"));
+        Serial.print(count);
+        Serial.print(F(" S:0x"));
+        Serial.print(status, HEX);
+        Serial.print(F(" len="));
+        Serial.print(len);
+
+        if (len > 0 && len < 64) {
+            byte data[64];
+            memset(data, 0, sizeof(data));
+            DW1000.getData(data, len);
+
+            // Print hex (first 8 bytes)
+            Serial.print(F(" ["));
+            for (int i = 0; i < min((int)len, 8); i++) {
+                if (data[i] < 16) Serial.print("0");
+                Serial.print(data[i], HEX);
+                Serial.print(" ");
+            }
+            Serial.print(F("] \""));
+
+            // Print string
+            for (int i = 0; i < min((int)len, 12); i++) {
+                char c = data[i];
+                if (c >= 32 && c < 127) Serial.print(c);
+                else if (c == 0) break;
+                else Serial.print('.');
+            }
+            Serial.print(F("\""));
+
+            // Check if valid (starts with 'T')
+            if (data[0] == 'T') {
+                success++;
+                Serial.print(F(" VALID"));
+            } else {
+                fail++;
+                Serial.print(F(" ???"));
+            }
+        } else {
+            fail++;
+            Serial.print(F(" BAD"));
+        }
+
+        Serial.print(F(" ("));
+        Serial.print(success);
+        Serial.print(F("/"));
+        Serial.print(count);
+        Serial.println(F(")"));
+
+        // Clear RX status
+        DW1000.clearReceiveStatus();
+        receiving = false;
+    }
+
+    // Check for errors (CRC fail, header error, etc)
+    bool rxError = (status & (1UL << RXFCE_BIT)) ||
+                   (status & (1UL << RXPHE_BIT)) ||
+                   (status & (1UL << RXRFSL_BIT)) ||
+                   (status & (1UL << LDEERR_BIT));
+
+    if (rxError) {
+        fail++;
+        // Only print every 5th error
+        if (fail % 5 == 1) {
+            Serial.print(F("[RX error #"));
+            Serial.print(fail);
+            Serial.print(F(" status=0x"));
+            Serial.print(status, HEX);
+            Serial.println(F("]"));
+        }
+        DW1000.clearReceiveStatus();
+        DW1000.idle();
+        receiving = false;
+    }
+
+    // Status every 20s
+    if (millis() - lastStatus > 20000) {
+        lastStatus = millis();
+        Serial.print(F("--- Status: "));
+        Serial.print(success);
+        Serial.print(F(" valid / "));
+        Serial.print(count);
+        Serial.print(F(" total ("));
+        Serial.print(fail);
+        Serial.print(F(" errors), PLL="));
+        Serial.println(checkPLL() ? "OK" : "ERR");
+    }
+
+    delay(1);
+}
+
+#endif

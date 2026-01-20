@@ -1596,8 +1596,130 @@ build_flags = -I lib/DW1000-ng/src -std=gnu++11
 
 ---
 
-**Document Version**: 3.0
-**Last Updated**: 2026-01-17 17:30
-**Phase 3 Status**: ⏸️ BLOCKED (Hardware power issue - RFPLL_LL)
-**Root Cause**: Power supply noise causing RF PLL instability
-**Best Current Config**: NO J1 jumper + DW1000-ng library + DEV1 (ACM1) more stable
+---
+
+## Session 2026-01-19: TX/RX Debug - SPI Corruption Discovery
+
+### CRITICAL FINDING: SPI Corruption Only in RX Mode
+
+**Summary**: Systematic testing revealed that SPI communication is corrupted ONLY when the DW1000 is in RX mode. TX works 100% reliably on both devices.
+
+### Test Methodology
+
+Created `test_spi_diagnostic.cpp` to isolate the SPI corruption:
+
+| Test Phase | DW1000 State | SPI Reads | Result |
+|------------|--------------|-----------|--------|
+| 1. IDLE baseline | Chip idle | 100 reads | ✅ 100% good |
+| 2. IDLE verify | Chip idle | 100 reads | ✅ 100% good |
+| 3. TX mode | After transmit | 100 reads | ✅ 100% good |
+| 4. RX mode | During receive | 100 reads | ❌ ~45% good, 55% corrupt |
+
+**Conclusion**: The SPI corruption is definitively linked to RX mode operation.
+
+### Tests Conducted
+
+| Test File | Purpose | Result |
+|-----------|---------|--------|
+| test_spi_diagnostic.cpp | Isolate SPI corruption | Found RX-only corruption |
+| test_tx_irq.cpp | TX with IRQ callbacks | ✅ 100% success both devices |
+| test_rx_callback_only.cpp | RX using only callbacks | ❌ Corrupted data |
+| test_rx_slow_spi.cpp | RX with 2MHz SPI | ❌ Still corrupt (rules out SPI speed) |
+| test_ranging_anchor.cpp | DW1000Ranging anchor | ❌ Same RX issue |
+| test_ranging_tag.cpp | DW1000Ranging tag | ❌ Same RX issue |
+
+### Root Cause Analysis
+
+**Most Likely (80%)**: Power supply noise during RX mode
+- RX mode draws ~110mA vs ~30mA in TX
+- Current surge causes voltage dips
+- Voltage instability corrupts SPI communication
+- DW1000 requires <25mV ripple on power supply
+
+**Possible (15%)**: RF coupling into SPI lines
+- Antenna receives RF energy
+- Some energy couples into nearby SPI traces
+- Causes bit errors on MISO line
+
+**Unlikely (5%)**: Module defects
+- Both modules show identical behavior
+- Consistent with design issue, not random defects
+
+### What This Rules Out
+
+1. **SPI speed** - Tested with 2MHz slow SPI, same corruption
+2. **IRQ handling** - Tested callback-only approach, same issue
+3. **Library bugs** - Tested DW1000Ranging library, same issue
+4. **Timing issues** - Corruption occurs even with long delays
+
+### Current Working Status
+
+| Function | Status | Notes |
+|----------|--------|-------|
+| Device ID read | ✅ Working | Both devices: 0xDECA0130 |
+| SPI in IDLE | ✅ Working | 100% reliable |
+| TX mode | ✅ Working | 100% success with IRQ callbacks |
+| RX mode | ❌ Broken | ~55% SPI corruption rate |
+| LDO tuning | ✅ Applied | Fixes PLL stability |
+| Ranging | ❌ Blocked | Requires working RX |
+
+### Tools Created
+
+1. **scripts/capture_serial.py** - Reliable serial capture with:
+   - Proper DTR reset for Arduino
+   - Configurable timeout
+   - Line count limiting
+   - No more stuck monitoring sessions
+
+2. **docs/serial_commands.md** - Quick reference for serial monitoring commands
+
+### Recommended Next Steps
+
+**Hardware Investigation Required:**
+
+1. **External 3.3V power supply** - Bypass Arduino/shield power
+   - Use quality LDO rated for 500mA+
+   - Should eliminate voltage dips during RX
+
+2. **Add decoupling capacitors** - If available
+   - 10-47µF on 3V3_DCDC
+   - 100nF ceramic near DWM1000
+
+3. **Check antenna connections** - U.FL connectors
+   - Reseat antennas
+   - Verify proper connection
+
+4. **Consider ESP32 migration** - If hardware fixes fail
+   - Better power regulation
+   - More processing power
+   - Proven DW1000 support
+
+### Session Impact
+
+**Positive:**
+- ✅ Isolated root cause to RX mode specifically
+- ✅ TX confirmed 100% working on both devices
+- ✅ LDO tuning fix validated (PLL stable)
+- ✅ Created reliable serial monitoring tools
+- ✅ Comprehensive documentation of findings
+
+**Blocking:**
+- ❌ RX mode has fundamental SPI corruption
+- ❌ Cannot complete ranging without working RX
+- ❌ Hardware investigation/modification required
+
+### Documentation Created
+
+- `docs/findings/TX_RX_DEBUG_SESSION_2026-01-19.md` - Full debug session log
+- `scripts/capture_serial.py` - Serial capture utility
+- `docs/serial_commands.md` - Command reference
+- Multiple test files in `tests/` directory
+
+---
+
+**Document Version**: 4.0
+**Last Updated**: 2026-01-19 (Session 4 - TX/RX Debug)
+**Phase 3 Status**: ⏸️ BLOCKED (SPI corruption in RX mode - hardware issue)
+**Root Cause**: SPI corruption occurs only during RX mode - likely power/RF coupling issue
+**What Works**: TX 100%, LDO tuning, SPI in IDLE mode
+**What's Broken**: RX mode - ~55% SPI corruption rate
