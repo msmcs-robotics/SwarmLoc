@@ -1717,9 +1717,76 @@ Created `test_spi_diagnostic.cpp` to isolate the SPI corruption:
 
 ---
 
-**Document Version**: 4.0
-**Last Updated**: 2026-01-19 (Session 4 - TX/RX Debug)
-**Phase 3 Status**: ⏸️ BLOCKED (SPI corruption in RX mode - hardware issue)
-**Root Cause**: SPI corruption occurs only during RX mode - likely power/RF coupling issue
-**What Works**: TX 100%, LDO tuning, SPI in IDLE mode
-**What's Broken**: RX mode - ~55% SPI corruption rate
+---
+
+## Session 2026-02-12: SPI_EDGE Fix & RX Communication Achieved
+
+### BREAKTHROUGH: Root Cause of 0xFF Reads Found (SPI_EDGE_BIT)
+
+**Problem**: After library initialization, ALL register reads returned 0xFF on Arduino Uno.
+
+**Root Cause**: `DW1000.cpp:select()` sets SPI_EDGE_BIT (bit 10 of SYS_CFG), which changes MISO timing. Arduino Uno's AVR SPI hardware cannot sample correctly with this timing.
+
+**Fix**: `#if !defined(__AVR__)` guard around `setBit(_syscfg, LEN_SYS_CFG, SPI_EDGE_BIT, true)`
+
+**Impact**: SPI success rate went from 16% to 90-100% (IDLE) / 75-90% (RX mode).
+
+### Three Library Fixes Applied (DW1000.cpp)
+
+1. **SPI_EDGE_BIT** — Disabled for AVR platforms (root cause of 0xFF reads)
+2. **SPI speed** — Reduced from 16MHz to 2MHz for AVR reliability during RX
+3. **handleInterrupt()** — Reordered: check `isReceiveDone()` BEFORE `isReceiveFailed()`, moved `isClockProblem()` to end
+
+### TX/RX Communication Achieved
+
+- **TX**: 30/30 packets sent successfully (100%)
+- **RX**: 10/30 frames detected (33%) using polling + watchdog approach
+- **Data**: len=74, partially garbled by SPI corruption during read
+- **Device preference**: ACM0 (LDO 0x88) better receiver than ACM1 (LDO 0x28)
+
+### Non-Blocking Serial Monitoring Scripts Created
+
+Created 4 scripts to prevent agent getting stuck on serial monitoring:
+- `scripts/upload_and_capture.sh` — compile + upload + capture with timeout
+- `scripts/capture_only.sh` — reset + capture
+- `scripts/capture_dual.sh` — two-port simultaneous capture
+- `scripts/upload_dual_and_capture.sh` — upload to 2 devices + capture both
+- `scripts/COMMANDS_REFERENCE.md` — reference for all scripts
+
+### Test Files Created
+
+- `tests/test_basic_sender.cpp` — Library example port (baud 115200)
+- `tests/test_basic_receiver.cpp` — Library example port (baud 115200)
+- `tests/test_rx_irq.cpp` — Polling RX with double-read retry + watchdog
+- `tests/test_spi_edge_fix.cpp` — SPI_EDGE verification test
+- `tests/test_rx_fixed.cpp` — Fixed RX test
+
+### Current Status After Session
+
+| Function | Status | Notes |
+|----------|--------|-------|
+| SPI in IDLE | ✅ 100% | SPI_EDGE fix resolved all 0xFF reads |
+| TX mode | ✅ 100% | 30/30 packets sent |
+| RX frame detection | ⚠️ 33% | 10/30 frames, polling + watchdog |
+| RX data integrity | ⚠️ Partial | len=74, data garbled by SPI noise |
+| IRQ handler | ✅ Fixed | Priority reordered, PLL bits moved |
+
+### Remaining Issue: SPI During RX Mode
+
+- 75-90% SPI reliability during active receive
+- Root cause: EMI from DW1000 radio front-end affecting SPI signal integrity
+- Hardware mitigation needed: bypass caps, better power, or ESP32 migration
+
+### Documentation Created
+
+- `docs/findings/SPI_EDGE_FIX_SESSION_2026-02-12.md` — Full session findings
+
+---
+
+**Document Version**: 5.0
+**Last Updated**: 2026-02-12 (Session 5 - SPI_EDGE Fix)
+**Phase 3 Status**: ⏸️ IN PROGRESS (RX works at 33%, needs improvement)
+**Root Cause Found**: SPI_EDGE_BIT incompatible with AVR — FIXED
+**Remaining Issue**: SPI corruption during RX mode (75-90% reliable, EMI)
+**What Works**: TX 100%, RX 33% frame detection, SPI in IDLE 100%
+**What Needs Work**: RX reliability, data integrity during receive

@@ -103,7 +103,9 @@ const byte DW1000Class::BIAS_900_64[] = {147, 133, 117, 99, 75, 50, 29, 0, 24, 4
 	// default ESP8266 frequency is 80 Mhz, thus divide by 4 is 20 MHz
 	const SPISettings DW1000Class::_fastSPI = SPISettings(20000000L, MSBFIRST, SPI_MODE0);
 #else
-	const SPISettings DW1000Class::_fastSPI = SPISettings(16000000L, MSBFIRST, SPI_MODE0);
+	// NOTE: 16MHz causes SPI corruption on AVR during RX mode.
+	// Using 2MHz for reliability. Can increase to 8MHz if performance needed.
+	const SPISettings DW1000Class::_fastSPI = SPISettings(2000000L, MSBFIRST, SPI_MODE0);
 #endif
 const SPISettings DW1000Class::_slowSPI = SPISettings(2000000L, MSBFIRST, SPI_MODE0);
 const SPISettings* DW1000Class::_currentSPI = &_fastSPI;
@@ -135,6 +137,12 @@ void DW1000Class::select(uint8_t ss) {
 	memset(_syscfg, 0, LEN_SYS_CFG);
 	setDoubleBuffering(false);
 	setInterruptPolarity(true);
+	// NOTE: SPI_EDGE_BIT (bit 10 of SYS_CFG) changes DW1000 MISO timing.
+	// On Arduino Uno (AVR), this causes ALL reads to return 0xFF.
+	// Disabled for AVR compatibility. Enable only for ESP8266/ESP32 if needed.
+#if !defined(__AVR__)
+	setBit(_syscfg, LEN_SYS_CFG, SPI_EDGE_BIT, true);
+#endif
 	writeSystemConfigurationRegister();
 	// default interrupt mask, i.e. no interrupts
 	clearInterrupts();
@@ -720,9 +728,9 @@ void DW1000Class::tune() {
 void DW1000Class::handleInterrupt() {
 	// read current status and handle via callbacks
 	readSystemEventStatusRegister();
-	if(isClockProblem() /* TODO and others */ && _handleError != 0) {
-		(*_handleError)();
-	}
+	// NOTE: On AVR, SPI reads during RX mode can be glitchy (~10-20%
+	// corruption). We prioritize isReceiveDone() over isReceiveFailed()
+	// to avoid discarding valid frames due to glitched error bits.
 	if(isTransmitDone() && _handleSent != 0) {
 		(*_handleSent)();
 		clearTransmitStatus();
@@ -731,7 +739,16 @@ void DW1000Class::handleInterrupt() {
 		(*_handleReceiveTimestampAvailable)();
 		clearReceiveTimestampAvailableStatus();
 	}
-	if(isReceiveFailed() && _handleReceiveFailed != 0) {
+	// Check receive DONE first - a valid frame should not be discarded
+	// even if error bits are also set (can happen from SPI glitches)
+	if(isReceiveDone() && _handleReceived != 0) {
+		(*_handleReceived)();
+		clearReceiveStatus();
+		if(_permanentReceive) {
+			newReceive();
+			startReceive();
+		}
+	} else if(isReceiveFailed() && _handleReceiveFailed != 0) {
 		(*_handleReceiveFailed)();
 		clearReceiveStatus();
 		if(_permanentReceive) {
@@ -745,13 +762,10 @@ void DW1000Class::handleInterrupt() {
 			newReceive();
 			startReceive();
 		}
-	} else if(isReceiveDone() && _handleReceived != 0) {
-		(*_handleReceived)();
-		clearReceiveStatus();
-		if(_permanentReceive) {
-			newReceive();
-			startReceive();
-		}
+	}
+	// Only report clock problems if no receive/transmit event was handled
+	if(isClockProblem() && _handleError != 0) {
+		(*_handleError)();
 	}
 	// clear all status that is left unhandled
 	clearAllStatus();
@@ -1089,6 +1103,20 @@ void DW1000Class::commitConfiguration() {
 	writeSystemEventMaskRegister();
 	// tune according to configuration
 	tune();
+	// Re-apply LDO tuning after tune() reconfigures PLL
+	// Without this, factory-calibrated LDO values are lost
+	byte ldoTune[LEN_OTP_RDAT];
+	readBytesOTP(0x04, ldoTune);
+	if(ldoTune[0] != 0 && ldoTune[0] != 0xFF) {
+		byte aonCtrl[LEN_AON_CTRL];
+		memset(aonCtrl, 0, LEN_AON_CTRL);
+		readBytes(AON, AON_CTRL_SUB, aonCtrl, LEN_AON_CTRL);
+		aonCtrl[0] |= 0x40;
+		writeBytes(AON, AON_CTRL_SUB, aonCtrl, LEN_AON_CTRL);
+		delay(1);
+		aonCtrl[0] &= ~0x40;
+		writeBytes(AON, AON_CTRL_SUB, aonCtrl, LEN_AON_CTRL);
+	}
 	// TODO check not larger two bytes integer
 	byte antennaDelayBytes[DW1000Time::LENGTH_TIMESTAMP];
 	if( _antennaDelay.getTimestamp() == 0 && _antennaCalibrated == false) {

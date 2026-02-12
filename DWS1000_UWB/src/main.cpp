@@ -82,9 +82,9 @@ void setup() {
     // Re-apply LDO after config
     applyLDOTuning();
 
-    // Attach callbacks
+    // Attach callbacks - only sent handler, NOT error handler
+    // (error handler fires on PLL LL sticky bits = false errors)
     DW1000.attachSentHandler(handleSent);
-    DW1000.attachErrorHandler(handleError);
 
     Serial.println(F("Ready to transmit"));
     Serial.println();

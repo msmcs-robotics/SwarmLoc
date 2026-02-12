@@ -1,0 +1,31 @@
+# PlatformIO build artifacts
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Test results and outputs (generated data, not source)
+tests/results/
+tests/outputs/
+tests/test_outputs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Compiled files
+*.o
+*.elf
+*.hex
+*.bin

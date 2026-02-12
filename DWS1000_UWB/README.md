@@ -1,138 +1,70 @@
-# DWS1000_UWB - UWB Two-Way Ranging Project
+# DWS1000_UWB
 
-Ultra-Wideband (UWB) distance measurement system using Qorvo PCL298336 (DWM3000) Arduino shields.
+UWB Two-Way Ranging system using Arduino Uno with DWS1000 (DW1000) shields for distance measurement.
 
-## Project Goal
+## Overview
 
-Measure distance between two UWB radios with **5-10 cm accuracy** using Time-of-Flight (ToF) ranging.
+Measures distance between two UWB radios using Time-of-Flight (ToF) ranging with the DW1000 chip. Target accuracy is ±10-20 cm. Part of the SwarmLoc project for GPS-denied drone swarm positioning.
+
+## Quick Start
+
+```bash
+# Build and upload TX test to device 0
+cd /home/devel/Desktop/SwarmLoc/DWS1000_UWB
+pio run -e uno -t upload --upload-port /dev/ttyACM0
+
+# Monitor serial output
+python3 scripts/capture_serial.py /dev/ttyACM0 -n 50
+```
 
 ## Hardware
 
-- **Module**: Qorvo PCL298336 v1.3 Arduino Shield (DWM3000EVB)
-- **Chip**: DWM3000 with DW3110 UWB IC
+- **Module**: Qorvo PCL298336 v1.3 (DWS1000 Arduino Shield)
+- **Chip**: DW1000 (Device ID: 0xDECA0130) — NOT DWM3000
 - **MCU**: 2x Arduino Uno (ATmega328P @ 16MHz)
-- **Connection**: Shields plug directly into Arduino Uno headers
+- **Config**: No J1 jumper, D8→D2 IRQ wire on each shield
 
-## ⚠️ CRITICAL: Hardware/Software Mismatch
+## Current Status
 
-**Your hardware uses DWM3000 chips, NOT DWM1000!**
+- TX: Working 100% on both devices
+- RX: Blocked by SPI corruption in RX mode (~55% error rate)
+- PLL: Stable after LDO tuning fix from OTP
 
-The original code uses:
-```cpp
-#include <DW1000.h>  // ← WRONG LIBRARY FOR DWM3000 HARDWARE
-```
+See [docs/todo.md](docs/todo.md) for current tasks.
 
-This project migrates to the correct DWM3000 library.
-
-## Status
-
-**Phase 1 Complete ✓** - Research and Planning
-- [x] Code review completed
-- [x] Hardware identified: DWM3000 (not DWM1000)
-- [x] Library research completed
-- [x] Documentation created
-- [x] Roadmap established
-
-**Phase 2 Starting** - Library Integration and Setup
-
-## Documentation
-
-### Quick Start
-- [📋 Summary](docs/findings/summary.md) - Quick overview of findings
-- [🗺️ Roadmap](docs/roadmap.md) - Complete project plan
-
-### Detailed Findings
-- [🔍 Code Review](docs/findings/code-review.md) - Analysis of current implementation
-- [🔧 Hardware Research](docs/findings/hardware-research.md) - DWM3000 specifications
-- [🌐 Web Research](docs/findings/web-research.md) - Library options and community findings
-
-## Architecture
-
-Single PlatformIO project with two environments:
+## Project Structure
 
 ```
 DWS1000_UWB/
-├── platformio.ini          # Multi-environment config
-├── src/
-│   ├── initiator/main.cpp  # Device that starts ranging
-│   └── responder/main.cpp  # Device that responds
-├── lib/                    # DWM3000 library
-├── docs/                   # Documentation
-└── test_scripts/          # Automation scripts
+├── docs/
+│   ├── README.md        # Detailed project documentation
+│   ├── scope.md         # Project boundaries
+│   ├── roadmap.md       # Feature progress
+│   ├── todo.md          # Current tasks
+│   ├── findings/        # Research and technical findings
+│   ├── features/        # Feature specifications
+│   └── archive/         # Session summaries and old status reports
+├── src/                 # Source code (initiator/responder)
+├── tests/               # Test firmware and scripts
+│   └── results/         # Test output data (gitignored)
+├── lib/                 # Libraries (DW1000, DW1000-ng)
+├── scripts/             # Utility scripts (serial capture, calibration)
+└── platformio.ini       # Build configuration
 ```
 
-## Development Strategy
+## Documentation
 
-### Primary: Arduino Uno
-Attempt TWR on Arduino Uno (high risk - community reports TWR not working)
+- [docs/scope.md](docs/scope.md) — What this project is and isn't
+- [docs/roadmap.md](docs/roadmap.md) — Feature progress and session history
+- [docs/todo.md](docs/todo.md) — Current tasks and blockers
 
-### Backup: ESP32 Migration
-If Uno proves inadequate, migrate to ESP32 (proven working)
+## Requirements
 
-See [Roadmap](docs/roadmap.md) for details.
-
-## Expected Accuracy
-
-- **Arduino Uno**: ±20-50 cm (if TWR works)
-- **ESP32**: ±5-10 cm (proven)
-
-## Getting Started
-
-### Prerequisites
-- PlatformIO installed
-- 2x Arduino Uno with PCL298336 shields
+- PlatformIO
+- 2x Arduino Uno with DWS1000 shields
 - USB cables
-
-### Connected Ports
-```
-/dev/ttyACM0 → Initiator
-/dev/ttyACM1 → Responder
-```
-
-### Build and Upload (Coming Soon)
-```bash
-# Upload to initiator
-pio run -e initiator -t upload
-
-# Upload to responder
-pio run -e responder -t upload
-
-# Monitor both devices
-./test_scripts/monitor_both.sh
-```
-
-## Key Resources
-
-### Libraries
-- **Arduino Uno**: [emineminof/DWM3000-ATMega328p](https://github.com/emineminof/DWM3000-ATMega328p) (TWR broken)
-- **ESP32**: [Fhilb/DW3000_Arduino](https://github.com/Fhilb/DW3000_Arduino) (proven working)
-
-### Datasheets
-- [DWM3000 Datasheet](https://download.mikroe.com/documents/datasheets/DWM3000_datasheet.pdf)
-- [DWM3000EVB Product Page](https://www.qorvo.com/products/p/DWM3000EVB)
-
-### Community
-- [Qorvo Tech Forum](https://forum.qorvo.com/c/ultra-wideband/13)
-- [Arduino DWM3000 Discussion](https://forum.arduino.cc/t/dwm-3000-collaborative-group/897672)
-
-## Next Steps
-
-1. Source DWM3000 library for ATmega328P
-2. Set up PlatformIO project structure
-3. Migrate code from `.ino` to PlatformIO
-4. Test basic SPI communication
-5. Debug TWR implementation
-
-See [Roadmap](docs/roadmap.md) for complete development plan.
+- D8→D2 jumper wire on each shield (IRQ routing)
 
 ## License
 
-MIT License (or specify your license)
-
-## Contributing
-
-This is a learning/development project. If you solve the Arduino Uno TWR challenges, please contribute back to the community!
-
----
-
-**Note**: Arduino Uno TWR is unproven. Be prepared to migrate to ESP32 if needed.
+MIT License

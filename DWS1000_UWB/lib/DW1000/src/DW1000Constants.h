@@ -60,6 +60,7 @@
 #define DIS_DRXB_BIT 12
 #define DIS_STXP_BIT 18
 #define HIRQ_POL_BIT 9
+#define SPI_EDGE_BIT 10
 #define RXAUTR_BIT 29
 #define PHR_MODE_SUB 16
 #define LEN_PHR_MODE_SUB 2
