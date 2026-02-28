@@ -1,48 +1,38 @@
 /**
- * TX Test with IRQ Callbacks
+ * TX Test - 64MHz PRF, 110kbps, Channel 5
  *
- * Sends numbered test packets for the RX IRQ test to receive.
- * Uses IRQ-based completion instead of polling to match RX approach.
+ * MODE_LONGDATA_RANGE_ACCURACY = {110kbps, 64MHz PRF, 2048 preamble}
+ * Different analog tuning registers vs 16MHz PRF.
+ * PIN_RST = 7
  */
 
 #include <Arduino.h>
 #include <SPI.h>
 #include <DW1000.h>
 
-// DWS1000 shield correct pin configuration
-const uint8_t PIN_RST = 7;   // DWS1000 routes RST to D7 (not D9!)
-const uint8_t PIN_IRQ = 2;   // IRQ jumpered from D8 to D2
+const uint8_t PIN_RST = 7;
+const uint8_t PIN_IRQ = 2;
 const uint8_t PIN_SS = SS;
 
-// Register addresses
 #define AON_REG         0x2C
 #define AON_CTRL_SUB    0x02
 
-// Stats
 volatile uint32_t txCount = 0;
 volatile uint32_t txGood = 0;
 volatile bool txDone = false;
-volatile bool txError = false;
 
-// Callback handlers
 void handleSent() {
     txGood++;
     txDone = true;
 }
 
-void handleError() {
-    txError = true;
-    Serial.println(F("[IRQ: TX Error]"));
-}
-
 void applyLDOTuning() {
     byte ldoTune[4];
     DW1000.readBytesOTP(0x04, ldoTune);
-
     if (ldoTune[0] != 0 && ldoTune[0] != 0xFF) {
         byte aonCtrl[4];
         DW1000.readBytes(AON_REG, AON_CTRL_SUB, aonCtrl, 4);
-        aonCtrl[0] |= 0x40;  // Set OTP_LDO bit
+        aonCtrl[0] |= 0x40;
         DW1000.writeBytes(AON_REG, AON_CTRL_SUB, aonCtrl, 4);
         delay(1);
         aonCtrl[0] &= ~0x40;
@@ -54,69 +44,56 @@ void setup() {
     Serial.begin(115200);
     delay(1000);
 
-    Serial.println(F("\n=== TX Test with IRQ Callbacks ==="));
+    Serial.println(F("\n=== TX 64MHz PRF Test ==="));
 
-    // Initialize DW1000 WITH IRQ
     DW1000.begin(PIN_IRQ, PIN_RST);
     DW1000.select(PIN_SS);
 
-    // Device info
-    char msg[64];
+    char msg[128];
     DW1000.getPrintableDeviceIdentifier(msg);
     Serial.print(F("Device: "));
     Serial.println(msg);
 
-    // Apply LDO tuning
-    Serial.println(F("Applying LDO tuning..."));
     applyLDOTuning();
 
-    // Configure
     DW1000.newConfiguration();
     DW1000.setDefaults();
     DW1000.setDeviceAddress(1);
     DW1000.setNetworkId(10);
-    DW1000.enableMode(DW1000.MODE_LONGDATA_RANGE_LOWPOWER);
+    DW1000.enableMode(DW1000.MODE_LONGDATA_RANGE_ACCURACY);
     DW1000.commitConfiguration();
-
-    // Re-apply LDO after config
     applyLDOTuning();
 
-    // Attach callbacks - only sent handler, NOT error handler
-    // (error handler fires on PLL LL sticky bits = false errors)
     DW1000.attachSentHandler(handleSent);
 
-    Serial.println(F("Ready to transmit"));
+    DW1000.getPrintableDeviceMode(msg);
+    Serial.print(F("Mode: "));
+    Serial.println(msg);
+    Serial.println(F("Ready"));
     Serial.println();
 }
 
 void loop() {
-    // Send a packet every 2 seconds
     static uint32_t lastTx = 0;
     if (millis() - lastTx >= 2000) {
         lastTx = millis();
         txCount++;
 
-        // Create message with sequence number
         char data[32];
         snprintf(data, sizeof(data), "PING#%05lu", txCount);
 
         txDone = false;
-        txError = false;
 
-        // Transmit
         DW1000.newTransmit();
         DW1000.setDefaults();
         DW1000.setData((byte*)data, strlen(data));
         DW1000.startTransmit();
 
-        // Wait for completion (IRQ-based)
         uint32_t timeout = millis() + 100;
-        while (!txDone && !txError && millis() < timeout) {
-            // Busy wait for IRQ
+        while (!txDone && millis() < timeout) {
             delayMicroseconds(100);
         }
 
-        // Report result
         Serial.print(F("TX #"));
         Serial.print(txCount);
         Serial.print(F(" \""));
@@ -129,12 +106,9 @@ void loop() {
             Serial.print(F("/"));
             Serial.print(txCount);
             Serial.println(F(")"));
-        } else if (txError) {
-            Serial.println(F("ERROR"));
         } else {
             Serial.println(F("TIMEOUT"));
         }
     }
-
     delay(10);
 }

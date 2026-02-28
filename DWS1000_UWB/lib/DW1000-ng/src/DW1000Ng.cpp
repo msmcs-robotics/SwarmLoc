@@ -2155,4 +2155,12 @@ namespace DW1000Ng {
         free(readBuf);
     }
 	#endif
+
+	void readBytes(byte cmd, uint16_t offset, byte data[], uint16_t n) {
+		_readBytesFromRegister(cmd, offset, data, n);
+	}
+
+	void writeBytes(byte cmd, uint16_t offset, byte data[], uint16_t n) {
+		_writeBytesToRegister(cmd, offset, data, n);
+	}
 }

@@ -9,9 +9,9 @@
 #include <SPI.h>
 #include <DW1000.h>
 
-// DWS1000 shield correct pin configuration
-const uint8_t PIN_RST = 7;   // DWS1000 routes RST to D7 (not D9!)
-const uint8_t PIN_IRQ = 2;   // IRQ jumpered from D8 to D2
+// Pin configuration
+const uint8_t PIN_RST = 9;
+const uint8_t PIN_IRQ = 2;
 const uint8_t PIN_SS = SS;
 
 // Register addresses

@@ -41,7 +41,10 @@ cp "$MAIN_CPP" "$MAIN_BACKUP"
 
 # Step 1: Upload to device 1
 echo "--- Step 1: Upload to Device 1 ($PORT1) ---"
-cp "$PROJECT_DIR/$SRC1" "$MAIN_CPP"
+SRC1_FULL="$(cd "$PROJECT_DIR" && realpath "$SRC1")"
+if [ "$SRC1_FULL" != "$(realpath "$MAIN_CPP")" ]; then
+    cp "$PROJECT_DIR/$SRC1" "$MAIN_CPP"
+fi
 cd "$PROJECT_DIR"
 if ! pio run 2>&1 | tail -3; then
     cp "$MAIN_BACKUP" "$MAIN_CPP"

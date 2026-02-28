@@ -1,302 +1,325 @@
 /**
- * SPI Diagnostic Test
+ * Antenna Delay Calibration Tag — DW1000-ng
  *
- * Tests SPI communication reliability by reading various registers
- * and comparing against known/expected values.
+ * Place devices at a KNOWN distance, run this firmware on the tag (ACM1)
+ * and test_twr_anchor.cpp on the anchor (ACM0).
  *
- * This helps identify if the RX status corruption is:
- * 1. SPI timing issue
- * 2. Register-specific issue
- * 3. Mode-specific issue (only in RX mode)
+ * Collects 200 TWR measurements, computes statistics, and outputs
+ * the recommended antenna delay adjustment.
+ *
+ * Set KNOWN_DISTANCE_M to the actual measured distance (antenna-to-antenna).
+ *
+ * DWS1000 shield: PIN_RST=7, D8→D2 wire for IRQ.
  */
 
 #include <Arduino.h>
 #include <SPI.h>
-#include <DW1000.h>
+#include <DW1000Ng.hpp>
+#include <DW1000NgUtils.hpp>
+#include <DW1000NgTime.hpp>
+#include <DW1000NgConstants.hpp>
 
-// Pin configuration
-const uint8_t PIN_RST = 9;
+const uint8_t PIN_RST = 7;
 const uint8_t PIN_IRQ = 2;
 const uint8_t PIN_SS = SS;
 
-// Register addresses
-#define DEV_ID_REG      0x00
-#define SYS_CFG_REG     0x04
-#define SYS_STATUS_REG  0x0F
-#define SYS_STATE_REG   0x19
-#define AON_REG         0x2C
-#define AON_CTRL_SUB    0x02
+// ============================================================
+// SET THIS TO THE ACTUAL MEASURED DISTANCE (meters)
+// Measure antenna center to antenna center with a tape measure.
+// ============================================================
+const float KNOWN_DISTANCE_M = 1.00;
 
-// Known values
-// DEV_ID should be: RIDTAG=0xDECA, MODEL=1, VER=3, REV=0 -> 0xDECA0130
-#define EXPECTED_DEV_ID_LOW  0x30  // Byte 0: REV=0, VER=3
-#define EXPECTED_DEV_ID_HIGH 0x01  // Byte 1: MODEL=1
+// Starting antenna delay (current uncalibrated value)
+uint16_t antennaDelay = 16436;
 
-uint32_t totalReads = 0;
-uint32_t corruptReads = 0;
-uint32_t goodReads = 0;
+// Number of measurements to collect per calibration round
+const uint16_t NUM_SAMPLES = 200;
 
-// Direct SPI read - bypasses library caching
-void readRegisterDirect(uint8_t reg, uint8_t subAddr, uint8_t* data, uint8_t len) {
-    // Build header
-    uint8_t header[3];
-    uint8_t headerLen = 1;
+// TWR message types
+#define POLL 0
+#define POLL_ACK 1
+#define RANGE 2
+#define RANGE_REPORT 3
+#define RANGE_FAILED 255
 
-    // Read operation, no sub-address extension initially
-    header[0] = reg & 0x3F;  // Register address, read mode (bit 7 = 0)
+volatile byte expectedMsgId = POLL_ACK;
+volatile boolean sentAck = false;
+volatile boolean receivedAck = false;
 
-    if (subAddr > 0) {
-        header[0] |= 0x40;  // Sub-address present
-        header[1] = subAddr & 0x7F;
-        headerLen = 2;
-        if (subAddr > 127) {
-            header[1] |= 0x80;
-            header[2] = (subAddr >> 7) & 0xFF;
-            headerLen = 3;
-        }
+// Timestamps
+uint64_t timePollSent;
+uint64_t timePollAckReceived;
+uint64_t timeRangeSent;
+
+// Data buffer
+#define LEN_DATA 16
+byte data[LEN_DATA];
+
+// Timing
+uint32_t lastActivity;
+uint32_t resetPeriod = 500;
+uint16_t replyDelayTimeUS = 3000;
+
+// Statistics
+float samples[NUM_SAMPLES];
+uint16_t sampleCount = 0;
+uint32_t timeoutCount = 0;
+uint8_t calibrationRound = 0;
+
+device_configuration_t DEFAULT_CONFIG = {
+    false,                       // extendedFrameLength
+    true,                        // receiverAutoReenable
+    true,                        // smartPower
+    true,                        // frameCheck
+    false,                       // nlos
+    SFDMode::STANDARD_SFD,       // sfd
+    Channel::CHANNEL_5,          // channel
+    DataRate::RATE_850KBPS,      // dataRate
+    PulseFrequency::FREQ_16MHZ,  // pulseFreq
+    PreambleLength::LEN_256,     // preambleLen
+    PreambleCode::CODE_3         // preaCode
+};
+
+interrupt_configuration_t DEFAULT_INTERRUPT_CONFIG = {
+    true,   // interruptOnSent
+    true,   // interruptOnReceived
+    true,   // interruptOnReceiveFailed
+    false,  // interruptOnReceiveTimeout
+    true    // interruptOnReceiveTimestampAvailable
+};
+
+void handleSent() {
+    sentAck = true;
+}
+
+void handleReceived() {
+    receivedAck = true;
+}
+
+void noteActivity() {
+    lastActivity = millis();
+}
+
+void transmitPoll() {
+    data[0] = POLL;
+    DW1000Ng::setTransmitData(data, LEN_DATA);
+    DW1000Ng::startTransmit();
+}
+
+void transmitRange() {
+    data[0] = RANGE;
+
+    byte futureTimeBytes[LENGTH_TIMESTAMP];
+    timeRangeSent = DW1000Ng::getSystemTimestamp();
+    timeRangeSent += DW1000NgTime::microsecondsToUWBTime(replyDelayTimeUS);
+    DW1000NgUtils::writeValueToBytes(futureTimeBytes, timeRangeSent, LENGTH_TIMESTAMP);
+    DW1000Ng::setDelayedTRX(futureTimeBytes);
+    timeRangeSent += DW1000Ng::getTxAntennaDelay();
+
+    DW1000NgUtils::writeValueToBytes(data + 1, timePollSent, LENGTH_TIMESTAMP);
+    DW1000NgUtils::writeValueToBytes(data + 6, timePollAckReceived, LENGTH_TIMESTAMP);
+    DW1000NgUtils::writeValueToBytes(data + 11, timeRangeSent, LENGTH_TIMESTAMP);
+    DW1000Ng::setTransmitData(data, LEN_DATA);
+    DW1000Ng::startTransmit(TransmitMode::DELAYED);
+}
+
+void resetInactive() {
+    timeoutCount++;
+    expectedMsgId = POLL_ACK;
+    DW1000Ng::forceTRxOff();
+    transmitPoll();
+    noteActivity();
+}
+
+void computeAndPrintStats() {
+    if (sampleCount == 0) {
+        Serial.println(F("NO SAMPLES COLLECTED"));
+        return;
     }
 
-    // Slow SPI for testing
-    SPI.beginTransaction(SPISettings(2000000L, MSBFIRST, SPI_MODE0));
-
-    digitalWrite(PIN_SS, LOW);
-    delayMicroseconds(5);  // CS setup time
-
-    for (int i = 0; i < headerLen; i++) {
-        SPI.transfer(header[i]);
+    // Compute mean
+    float sum = 0;
+    for (uint16_t i = 0; i < sampleCount; i++) {
+        sum += samples[i];
     }
+    float mean = sum / sampleCount;
 
-    for (int i = 0; i < len; i++) {
-        data[i] = SPI.transfer(0x00);
+    // Compute stddev, min, max
+    float sumSq = 0;
+    float minVal = samples[0];
+    float maxVal = samples[0];
+    for (uint16_t i = 0; i < sampleCount; i++) {
+        float diff = samples[i] - mean;
+        sumSq += diff * diff;
+        if (samples[i] < minVal) minVal = samples[i];
+        if (samples[i] > maxVal) maxVal = samples[i];
     }
+    float stddev = sqrt(sumSq / sampleCount);
 
-    delayMicroseconds(5);  // CS hold time
-    digitalWrite(PIN_SS, HIGH);
+    // Compute antenna delay adjustment
+    float error = mean - KNOWN_DISTANCE_M;
+    float errorPerDevice = error / 2.0;
+    int16_t delayAdj = (int16_t)(errorPerDevice / DISTANCE_OF_RADIO);
+    uint16_t newDelay = antennaDelay + delayAdj;
 
-    SPI.endTransaction();
+    Serial.println(F("\n========================================"));
+    Serial.print(F("CALIBRATION ROUND "));
+    Serial.println(calibrationRound);
+    Serial.println(F("========================================"));
+    Serial.print(F("Known distance:  "));
+    Serial.print(KNOWN_DISTANCE_M, 3);
+    Serial.println(F(" m"));
+    Serial.print(F("Antenna delay:   "));
+    Serial.println(antennaDelay);
+    Serial.print(F("Samples:         "));
+    Serial.print(sampleCount);
+    Serial.print(F("/"));
+    Serial.println(NUM_SAMPLES);
+    Serial.print(F("Timeouts:        "));
+    Serial.println(timeoutCount);
+    Serial.println(F("--- Measured Distance ---"));
+    Serial.print(F("Mean:    "));
+    Serial.print(mean, 4);
+    Serial.println(F(" m"));
+    Serial.print(F("StdDev:  "));
+    Serial.print(stddev, 4);
+    Serial.println(F(" m"));
+    Serial.print(F("Min:     "));
+    Serial.print(minVal, 4);
+    Serial.println(F(" m"));
+    Serial.print(F("Max:     "));
+    Serial.print(maxVal, 4);
+    Serial.println(F(" m"));
+    Serial.println(F("--- Calibration ---"));
+    Serial.print(F("Error:   "));
+    Serial.print(error, 4);
+    Serial.print(F(" m ("));
+    Serial.print(error * 100, 1);
+    Serial.println(F(" cm)"));
+    Serial.print(F("Adj/dev: "));
+    Serial.print(delayAdj);
+    Serial.println(F(" ticks"));
+    Serial.print(F("NEW_DELAY: "));
+    Serial.println(newDelay);
+    Serial.println(F("========================================"));
+
+    // Check if within tolerance
+    if (abs(error) < 0.05) {
+        Serial.println(F("CALIBRATION COMPLETE — error < 5 cm"));
+        Serial.print(F("Final antenna delay: "));
+        Serial.println(antennaDelay);
+        Serial.println(F("DONE"));
+    } else {
+        // Apply new delay and run another round
+        Serial.print(F("Applying new delay "));
+        Serial.println(newDelay);
+        antennaDelay = newDelay;
+        DW1000Ng::setAntennaDelay(antennaDelay);
+
+        // Reset for next round
+        calibrationRound++;
+        sampleCount = 0;
+        timeoutCount = 0;
+        Serial.println(F("Starting next calibration round..."));
+    }
 }
 
 void setup() {
     Serial.begin(115200);
     delay(1000);
 
-    Serial.println(F("\n=== SPI Diagnostic Test ==="));
+    Serial.println(F("\n=== Antenna Delay Calibration Tag ==="));
+    Serial.print(F("Known distance: "));
+    Serial.print(KNOWN_DISTANCE_M, 3);
+    Serial.println(F(" m"));
+    Serial.print(F("Initial delay:  "));
+    Serial.println(antennaDelay);
+    Serial.print(F("Samples/round:  "));
+    Serial.println(NUM_SAMPLES);
 
-    // Manual SPI init
-    pinMode(PIN_SS, OUTPUT);
-    digitalWrite(PIN_SS, HIGH);
-    pinMode(PIN_RST, OUTPUT);
+    DW1000Ng::initialize(PIN_SS, PIN_IRQ, PIN_RST);
+    DW1000Ng::applyConfiguration(DEFAULT_CONFIG);
+    DW1000Ng::applyInterruptConfiguration(DEFAULT_INTERRUPT_CONFIG);
 
-    // Hard reset
-    Serial.println(F("Hard reset..."));
-    digitalWrite(PIN_RST, LOW);
-    delay(10);
-    digitalWrite(PIN_RST, HIGH);
-    delay(10);
+    DW1000Ng::setDeviceAddress(2);
+    DW1000Ng::setNetworkId(10);
+    DW1000Ng::setAntennaDelay(antennaDelay);
 
-    SPI.begin();
+    DW1000Ng::attachSentHandler(handleSent);
+    DW1000Ng::attachReceivedHandler(handleReceived);
 
-    Serial.println(F("Testing register reads...\n"));
+    Serial.println(F("Collecting measurements...\n"));
 
-    // Test 1: Read DEV_ID (should always be 0xDECA0130)
-    Serial.println(F("=== Test 1: DEV_ID Register ==="));
-    for (int i = 0; i < 10; i++) {
-        uint8_t devId[4];
-        readRegisterDirect(DEV_ID_REG, 0, devId, 4);
-
-        totalReads++;
-        bool valid = (devId[0] == EXPECTED_DEV_ID_LOW && devId[1] == EXPECTED_DEV_ID_HIGH);
-        if (valid) goodReads++; else corruptReads++;
-
-        Serial.print(F("  DEV_ID: "));
-        for (int j = 0; j < 4; j++) {
-            if (devId[j] < 16) Serial.print("0");
-            Serial.print(devId[j], HEX);
-            Serial.print(" ");
-        }
-        Serial.println(valid ? F("OK") : F("CORRUPT!"));
-        delay(10);
-    }
-
-    // Now init DW1000 library (without IRQ)
-    Serial.println(F("\n=== Initializing DW1000 Library ==="));
-    DW1000.begin(0xFF, PIN_RST);  // No IRQ
-    DW1000.select(PIN_SS);
-
-    char msg[64];
-    DW1000.getPrintableDeviceIdentifier(msg);
-    Serial.print(F("Device ID via library: "));
-    Serial.println(msg);
-
-    // Apply LDO tuning
-    Serial.println(F("Applying LDO tuning..."));
-    byte ldoTune[4];
-    DW1000.readBytesOTP(0x04, ldoTune);
-    Serial.print(F("  OTP LDO: 0x"));
-    Serial.println(ldoTune[0], HEX);
-
-    if (ldoTune[0] != 0 && ldoTune[0] != 0xFF) {
-        byte aonCtrl[4];
-        DW1000.readBytes(AON_REG, AON_CTRL_SUB, aonCtrl, 4);
-        aonCtrl[0] |= 0x40;  // Set OTP_LDO bit
-        DW1000.writeBytes(AON_REG, AON_CTRL_SUB, aonCtrl, 4);
-        delay(1);
-        aonCtrl[0] &= ~0x40;
-        DW1000.writeBytes(AON_REG, AON_CTRL_SUB, aonCtrl, 4);
-        Serial.println(F("  LDO applied"));
-    }
-
-    // Test 2: Read status in IDLE mode
-    Serial.println(F("\n=== Test 2: SYS_STATUS in IDLE mode ==="));
-    for (int i = 0; i < 10; i++) {
-        uint8_t status[5];
-        DW1000.readBytes(SYS_STATUS_REG, 0x00, status, 5);
-
-        totalReads++;
-        // In idle, we expect CPLOCK (bit 1) set, not all FFs
-        bool valid = !(status[0] == 0xFF && status[1] == 0xFF);
-        if (valid) goodReads++; else corruptReads++;
-
-        Serial.print(F("  STATUS: "));
-        for (int j = 0; j < 5; j++) {
-            if (status[j] < 16) Serial.print("0");
-            Serial.print(status[j], HEX);
-            Serial.print(" ");
-        }
-        Serial.println(valid ? F("OK") : F("CORRUPT!"));
-        delay(50);
-    }
-
-    // Configure for RX
-    Serial.println(F("\n=== Configuring for RX ==="));
-    DW1000.newConfiguration();
-    DW1000.setDefaults();
-    DW1000.setDeviceAddress(2);
-    DW1000.setNetworkId(10);
-    DW1000.enableMode(DW1000.MODE_SHORTDATA_FAST_LOWPOWER);
-    DW1000.setFrameFilter(false);
-    DW1000.suppressFrameCheck(false);
-    DW1000.commitConfiguration();
-
-    // Re-apply LDO after config
-    if (ldoTune[0] != 0 && ldoTune[0] != 0xFF) {
-        byte aonCtrl[4];
-        DW1000.readBytes(AON_REG, AON_CTRL_SUB, aonCtrl, 4);
-        aonCtrl[0] |= 0x40;
-        DW1000.writeBytes(AON_REG, AON_CTRL_SUB, aonCtrl, 4);
-        delay(1);
-        aonCtrl[0] &= ~0x40;
-        DW1000.writeBytes(AON_REG, AON_CTRL_SUB, aonCtrl, 4);
-    }
-
-    // Test 3: Read status after config but before RX
-    Serial.println(F("\n=== Test 3: SYS_STATUS after config ==="));
-    for (int i = 0; i < 10; i++) {
-        uint8_t status[5];
-        DW1000.readBytes(SYS_STATUS_REG, 0x00, status, 5);
-
-        totalReads++;
-        bool valid = !(status[0] == 0xFF && status[1] == 0xFF);
-        if (valid) goodReads++; else corruptReads++;
-
-        Serial.print(F("  STATUS: "));
-        for (int j = 0; j < 5; j++) {
-            if (status[j] < 16) Serial.print("0");
-            Serial.print(status[j], HEX);
-            Serial.print(" ");
-        }
-        Serial.println(valid ? F("OK") : F("CORRUPT!"));
-        delay(50);
-    }
-
-    // Test 4: Start RX and read status
-    Serial.println(F("\n=== Test 4: SYS_STATUS during RX ==="));
-    DW1000.newReceive();
-    DW1000.setDefaults();
-    DW1000.startReceive();
-
-    Serial.println(F("  RX started, waiting 500ms..."));
-    delay(500);
-
-    for (int i = 0; i < 20; i++) {
-        uint8_t status[5];
-        DW1000.readBytes(SYS_STATUS_REG, 0x00, status, 5);
-
-        totalReads++;
-        bool valid = !(status[0] == 0xFF && status[1] == 0xFF && status[2] == 0xFF);
-        if (valid) goodReads++; else corruptReads++;
-
-        Serial.print(F("  STATUS: "));
-        for (int j = 0; j < 5; j++) {
-            if (status[j] < 16) Serial.print("0");
-            Serial.print(status[j], HEX);
-            Serial.print(" ");
-        }
-        Serial.println(valid ? F("OK") : F("CORRUPT!"));
-        delay(100);  // Slower polling
-    }
-
-    DW1000.idle();
-
-    // Test 5: Read status after returning to IDLE
-    Serial.println(F("\n=== Test 5: SYS_STATUS back in IDLE ==="));
-    delay(100);
-    for (int i = 0; i < 10; i++) {
-        uint8_t status[5];
-        DW1000.readBytes(SYS_STATUS_REG, 0x00, status, 5);
-
-        totalReads++;
-        bool valid = !(status[0] == 0xFF && status[1] == 0xFF);
-        if (valid) goodReads++; else corruptReads++;
-
-        Serial.print(F("  STATUS: "));
-        for (int j = 0; j < 5; j++) {
-            if (status[j] < 16) Serial.print("0");
-            Serial.print(status[j], HEX);
-            Serial.print(" ");
-        }
-        Serial.println(valid ? F("OK") : F("CORRUPT!"));
-        delay(50);
-    }
-
-    // Summary
-    Serial.println(F("\n========== SUMMARY =========="));
-    Serial.print(F("Total reads: "));
-    Serial.println(totalReads);
-    Serial.print(F("Good reads:  "));
-    Serial.println(goodReads);
-    Serial.print(F("Corrupt:     "));
-    Serial.println(corruptReads);
-    Serial.print(F("Success rate: "));
-    Serial.print((goodReads * 100) / totalReads);
-    Serial.println(F("%"));
-
-    if (corruptReads > 0) {
-        Serial.println(F("\n*** SPI CORRUPTION DETECTED ***"));
-        Serial.println(F("Check: wiring, power supply, SPI speed"));
-    } else {
-        Serial.println(F("\nSPI communication appears stable."));
-    }
-
-    Serial.println(F("\nTest complete. Entering idle loop."));
+    transmitPoll();
+    noteActivity();
 }
 
 void loop() {
-    // Periodic status check
-    static uint32_t lastCheck = 0;
-    if (millis() - lastCheck > 5000) {
-        lastCheck = millis();
-
-        uint8_t status[5];
-        DW1000.readBytes(SYS_STATUS_REG, 0x00, status, 5);
-
-        Serial.print(F("[Idle check] STATUS: "));
-        for (int j = 0; j < 5; j++) {
-            if (status[j] < 16) Serial.print("0");
-            Serial.print(status[j], HEX);
-            Serial.print(" ");
+    if (!sentAck && !receivedAck) {
+        if (millis() - lastActivity > resetPeriod) {
+            resetInactive();
         }
-        Serial.println();
+        return;
     }
-    delay(100);
+
+    if (sentAck) {
+        sentAck = false;
+        DW1000Ng::startReceive();
+    }
+
+    if (receivedAck) {
+        receivedAck = false;
+        DW1000Ng::getReceivedData(data, LEN_DATA);
+        byte msgId = data[0];
+
+        if (msgId != expectedMsgId) {
+            expectedMsgId = POLL_ACK;
+            transmitPoll();
+            return;
+        }
+
+        if (msgId == POLL_ACK) {
+            timePollSent = DW1000Ng::getTransmitTimestamp();
+            timePollAckReceived = DW1000Ng::getReceiveTimestamp();
+            expectedMsgId = RANGE_REPORT;
+            transmitRange();
+            noteActivity();
+
+        } else if (msgId == RANGE_REPORT) {
+            float curRange;
+            memcpy(&curRange, data + 1, 4);
+            float distM = curRange * DISTANCE_OF_RADIO;
+
+            // Store sample
+            if (sampleCount < NUM_SAMPLES) {
+                samples[sampleCount] = distM;
+                sampleCount++;
+
+                // Progress every 20 samples
+                if (sampleCount % 20 == 0) {
+                    Serial.print(F("  ["));
+                    Serial.print(sampleCount);
+                    Serial.print(F("/"));
+                    Serial.print(NUM_SAMPLES);
+                    Serial.print(F("] last="));
+                    Serial.print(distM, 3);
+                    Serial.println(F(" m"));
+                }
+
+                // Round complete
+                if (sampleCount >= NUM_SAMPLES) {
+                    computeAndPrintStats();
+                }
+            }
+
+            expectedMsgId = POLL_ACK;
+            transmitPoll();
+            noteActivity();
+
+        } else if (msgId == RANGE_FAILED) {
+            expectedMsgId = POLL_ACK;
+            transmitPoll();
+            noteActivity();
+        }
+    }
 }

@@ -613,4 +613,11 @@ namespace DW1000Ng {
 	void getPrettyBytes(byte data[], char msgBuffer[], uint16_t n);
     void getPrettyBytes(byte cmd, uint16_t offset, char msgBuffer[], uint16_t n);
 	#endif
+
+	/**
+	 * Low-level register access for diagnostics.
+	 * Added to expose SYS_STATUS raw reads for CLKPLL_LL monitoring.
+	 */
+	void readBytes(byte cmd, uint16_t offset, byte data[], uint16_t n);
+	void writeBytes(byte cmd, uint16_t offset, byte data[], uint16_t n);
 };

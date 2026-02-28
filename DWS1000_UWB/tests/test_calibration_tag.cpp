@@ -27,7 +27,7 @@ const uint8_t PIN_SS = SS;
 // SET THIS TO THE ACTUAL MEASURED DISTANCE (meters)
 // Measure antenna center to antenna center with a tape measure.
 // ============================================================
-const float KNOWN_DISTANCE_M = 1.00;
+const float KNOWN_DISTANCE_M = 0.6096;  // 24 inches
 
 // Starting antenna delay (current uncalibrated value)
 uint16_t antennaDelay = 16436;

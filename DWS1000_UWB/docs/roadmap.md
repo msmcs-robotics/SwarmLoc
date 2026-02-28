@@ -1783,10 +1783,96 @@ Created 4 scripts to prevent agent getting stuck on serial monitoring:
 
 ---
 
-**Document Version**: 5.0
-**Last Updated**: 2026-02-12 (Session 5 - SPI_EDGE Fix)
-**Phase 3 Status**: ⏸️ IN PROGRESS (RX works at 33%, needs improvement)
-**Root Cause Found**: SPI_EDGE_BIT incompatible with AVR — FIXED
-**Remaining Issue**: SPI corruption during RX mode (75-90% reliable, EMI)
-**What Works**: TX 100%, RX 33% frame detection, SPI in IDLE 100%
-**What Needs Work**: RX reliability, data integrity during receive
+---
+
+## Session 2026-02-27: J1 Jumper Fix + DW1000-ng — RX BREAKTHROUGH
+
+### Key Findings
+
+1. **J1 Jumper = Root Cause of RX Failure** — With no J1 jumper, DWM1000 power rail was floating. Module powered parasitically through 5V SPI ESD diodes (VDD=3.67V, above 3.6V abs max). PLL could never maintain lock during RX.
+2. **Fix: J1 jumper on pins 1-2** (3V3_DCDC → center pin → DWM1000). CLKPLL_LL dropped from 75-99% to **0%**.
+3. **DW1000-ng library required** — thotro DW1000 library RX completely broken (0 events) and frame format incompatible. DW1000-ng has proper init sequence (XTI clock, PLLLDT, clock sequencing).
+4. **RX now works**: ACM0=100% (44/44), ACM1=78% (35/45) with DW1000-ng + J1 jumper.
+
+### Software Ruled Out (before J1 fix)
+
+XTAL trim sweep (0-31), PLLLDT enable, channel/PRF/data rate variations, both libraries — all failed without proper power.
+
+### Current Status
+
+| Function | Status | Notes |
+|----------|--------|-------|
+| TX mode | ✅ 100% | Both devices, DW1000-ng |
+| RX ACM0 | ✅ 100% | 44/44 frames, LDO 0x88 |
+| RX ACM1 | ✅ 78% | 35/45 frames, LDO 0x28 |
+| PLL stability | ✅ 0% loss | J1 jumper fixed |
+| Library | DW1000-ng | thotro library deprecated |
+
+### Detailed Findings
+
+- [RX_DIAGNOSTIC_SESSION_2026-02-27.md](findings/RX_DIAGNOSTIC_SESSION_2026-02-27.md) — Full test matrix, voltage analysis, library comparison
+- [bugs.md](bugs.md) — BUG-010: DWS1000 DC-DC Overvoltage
+
+### Next: TWR Ranging
+
+Implement Two-Way Ranging using DW1000-ng. ACM0 as anchor (better RX), ACM1 as tag.
+
+---
+
+## Session 2026-02-27b: TWR Ranging + Antenna Delay Calibration — SCOPE COMPLETE
+
+### TWR Ranging Achieved
+
+Implemented asymmetric Two-Way Ranging using DW1000-ng:
+- **Anchor**: `tests/test_twr_anchor.cpp` — responds to POLL, computes distance, sends RANGE_REPORT
+- **Tag**: `tests/test_twr_tag.cpp` — initiates POLL, exchanges timestamps, receives distance
+- **Protocol**: POLL → POLL_ACK → RANGE → RANGE_REPORT (4-message asymmetric TWR)
+- **Performance**: ~9.4 Hz ranging rate, 97% success, 0 RX failures
+
+### Antenna Delay Calibration
+
+Default antenna delay (16436) produced 30 cm systematic error. Calibrated using iterative measurement at known distance.
+
+| Round | Antenna Delay | Mean (at 24") | Error |
+|-------|--------------|---------------|-------|
+| 0 (baseline) | 16436 | 0.312 m | -29.7 cm |
+| 1 (tag only) | tag=16405, anchor=16436 | ~0.44 m | ~-17 cm |
+| 2 (both) | **16405** | **0.656 m** | **+4.6 cm** |
+
+**Calibrated antenna delay: 16405** (-31 ticks from default)
+
+Verification (60s, 565 ranges): mean 0.656 m, StdDev ±4.4 cm, range 0.52-0.99 m.
+Residual +4.6 cm error within ±5 cm measurement uncertainty of known distance.
+
+### Calibration Firmware
+
+Created `tests/test_calibration_tag.cpp` — auto-iterating calibration:
+1. Collects 200 TWR samples at current antenna delay
+2. Computes mean, stddev, min, max
+3. Calculates per-device adjustment: `adj = (error / 2) / DISTANCE_OF_RADIO`
+4. Applies new delay and repeats until error < 5 cm
+
+### Scope Target Met
+
+| Requirement | Status |
+|-------------|--------|
+| Both devices send/receive UWB frames | ✅ |
+| TWR ranging produces distance measurements | ✅ |
+| Measurements consistent and repeatable | ✅ (±4.4 cm StdDev) |
+| Serial output shows distance | ✅ |
+| Target accuracy ±10-20 cm after calibration | ✅ (+4.6 cm error) |
+
+### Detailed Findings
+
+- [ANTENNA_DELAY_CALIBRATION_SESSION_2026-02-27.md](findings/ANTENNA_DELAY_CALIBRATION_SESSION_2026-02-27.md) — Calibration method, results, formulas
+- [ANTENNA_DELAY_CALIBRATION_2026.md](findings/ANTENNA_DELAY_CALIBRATION_2026.md) — General calibration theory
+
+---
+
+**Document Version**: 7.0
+**Last Updated**: 2026-02-27 (Session 7 - TWR Ranging + Calibration)
+**Phase 3 Status**: ✅ COMPLETE (RX working 78-100%)
+**Phase 4 Status**: ✅ COMPLETE (TWR ranging, calibrated ±4.6 cm)
+**All Scope Requirements**: ✅ MET
+**What Works**: TX 100%, RX 78-100%, TWR 9.4 Hz, antenna delay 16405, accuracy +4.6 cm
+**Calibrated Antenna Delay**: 16405 (both devices)

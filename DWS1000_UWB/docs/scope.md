@@ -1,7 +1,7 @@
 # DWS1000_UWB - Scope
 
-> Last updated: 2026-01-17
-> Status: Active
+> Last updated: 2026-02-27
+> Status: Active — nearing completion
 
 ---
 
@@ -22,17 +22,17 @@ UWB-based ranging system using two Arduino Unos with DWS1000 hat modules (Qorvo 
 *What the system must do*
 
 - [x] Both devices can send and receive UWB frames
-- [ ] TWR ranging protocol produces distance measurements
-- [ ] Measurements are consistent and repeatable
-- [ ] Serial output shows distance in human-readable format
+- [x] TWR ranging protocol produces distance measurements
+- [x] Measurements are consistent and repeatable
+- [x] Serial output shows distance in human-readable format
 
 ### Technical Requirements
 *Technical constraints, compatibility, performance needs*
 
 - [x] Use DW1000 chip (Device ID: DECA0130), NOT DWM3000
 - [x] PlatformIO-based build system
-- [ ] Interrupt-driven communication (bug fix applied)
-- [ ] Target accuracy: ±10-20 cm after calibration
+- [x] Interrupt-driven communication (DW1000-ng IRQ handlers)
+- [x] Target accuracy: ±10-20 cm after calibration (achieved +4.6 cm error)
 
 ### Resource Requirements
 *Hardware, software, dependencies, services*
@@ -40,7 +40,7 @@ UWB-based ranging system using two Arduino Unos with DWS1000 hat modules (Qorvo 
 - [x] 2x Arduino Uno (ATmega328P)
 - [x] 2x Qorvo PCL298336 v1.3 DWS1000 shields
 - [x] USB cables for programming and monitoring
-- [x] arduino-dw1000 library (in lib/)
+- [x] DW1000-ng library (in lib/DW1000-ng/)
 
 ## Constraints
 
@@ -56,8 +56,9 @@ UWB-based ranging system using two Arduino Unos with DWS1000 hat modules (Qorvo 
 
 - [VERIFIED] Hardware is DW1000, not DWM3000 (Device ID: DECA0130)
 - [VERIFIED] USB ports: /dev/ttyACM0, /dev/ttyACM1
-- [VERIFIED] Interrupt bug in DW1000.cpp has been fixed
-- [ASSUMED] Physical connections and antennas are properly seated
+- [VERIFIED] J1 jumper on pins 1-2 required (DC-DC → DWM1000)
+- [VERIFIED] D8→D2 wire required (IRQ routing to INT0)
+- [VERIFIED] DW1000-ng library works; thotro library RX broken
 
 ## Boundaries
 
@@ -84,16 +85,18 @@ UWB-based ranging system using two Arduino Unos with DWS1000 hat modules (Qorvo 
 
 ## Development Approach
 
-**Library Flexibility**: Open to using multiple different libraries and editing them as needed to understand the specific DWS1000 module. The goal is to learn how this hardware works, not to stick rigidly to one library. Experimentation and modification of library code is encouraged.
+**Library**: DW1000-ng (better PLL init, PLLLDT, clock sequencing). thotro DW1000 library deprecated — RX broken, incompatible frame format.
 
 ## Technical Decisions
 
 | Decision | Choice | Rationale | Date |
 |----------|--------|-----------|------|
-| Library | arduino-dw1000 v0.9 (editable) | Starting point, can modify or replace | 2026-01-08 |
+| Library | DW1000-ng | Proper PLL init, working RX | 2026-02-27 |
 | Build system | PlatformIO | Multi-environment support | 2026-01-08 |
-| Pin config | RST=9, IRQ=2, CS=10 | Shield default | 2026-01-08 |
+| Pin config | RST=7, IRQ=2 (via D8→D2 wire), CS=10 | Shield + INT0 routing | 2026-01-08 |
 | Library source | Copied to lib/ (not submodule) | Allows direct editing | 2026-01-11 |
+| J1 jumper | Pins 1-2 (DC-DC → DWM1000) | Root cause of RX failure | 2026-02-27 |
+| TWR config | 850kbps, 16MHz PRF, Ch5, Preamble 256 | Best balance of speed/reliability | 2026-02-27 |
 
 ## Integration Points
 
@@ -103,14 +106,14 @@ UWB-based ranging system using two Arduino Unos with DWS1000 hat modules (Qorvo 
 
 ## Open Questions
 
-- [ ] Is D8→D2 jumper wire still needed or should it be removed?
-- [x] Why isn't receiver detecting transmissions? → Physical connection suspected
+- [x] Is D8→D2 jumper wire needed? → YES, required for IRQ routing
+- [x] Why isn't receiver detecting transmissions? → J1 jumper missing (power floating)
 
 ## Critical Notes
 
-- **Jumper wire D8→D2** currently installed - may need removal for default pin config
-- **Interrupt bug** in DW1000.cpp was fixed (buffer overrun in interruptOnReceiveFailed)
-- **USB hub issue** resolved by moving ACM1 to direct USB port
+- **J1 jumper on pins 1-2** is REQUIRED — without it DWM1000 power rail floats
+- **D8→D2 wire** required on each shield for IRQ routing to Arduino INT0
+- **DW1000-ng library** required — thotro library has broken RX
 
 ---
 
@@ -118,6 +121,7 @@ UWB-based ranging system using two Arduino Unos with DWS1000 hat modules (Qorvo 
 
 | Date | Changes | By |
 |------|---------|-----|
+| 2026-02-27 | Updated: all requirements met except calibration, DW1000-ng selected, J1 jumper required | LLM |
 | 2026-01-17 | Reformatted to match template | LLM |
 | 2026-01-17 | Initial scope creation | LLM |
 
