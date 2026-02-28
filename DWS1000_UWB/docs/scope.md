@@ -1,7 +1,7 @@
 # DWS1000_UWB - Scope
 
 > Last updated: 2026-02-27
-> Status: Active — nearing completion
+> Status: Active — core ranging complete, calibration workflow in progress
 
 ---
 
@@ -69,6 +69,10 @@ UWB-based ranging system using two Arduino Unos with DWS1000 hat modules (Qorvo 
 - Distance measurements using TWR
 - Documentation of configuration and findings
 - Antenna delay calibration
+- Auto-calibration workflow (calibration mode → config.h → live mode)
+- OLED display for calibration feedback (DSDTECH 0.91" SSD1306)
+- Multi-distance validation (within desk range, ~50 cm adjustments)
+- Local tooling (serial monitor, dev workflow scripts)
 
 ### Out of Scope (Exclusions)
 
@@ -121,7 +125,8 @@ UWB-based ranging system using two Arduino Unos with DWS1000 hat modules (Qorvo 
 
 | Date | Changes | By |
 |------|---------|-----|
-| 2026-02-27 | Updated: all requirements met except calibration, DW1000-ng selected, J1 jumper required | LLM |
+| 2026-02-28 | Added: calibration workflow, OLED display, tooling, multi-distance validation | LLM |
+| 2026-02-27 | Updated: all requirements met, DW1000-ng selected, J1 jumper required, calibration done | LLM |
 | 2026-01-17 | Reformatted to match template | LLM |
 | 2026-01-17 | Initial scope creation | LLM |
 
