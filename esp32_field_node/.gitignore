@@ -1,0 +1,14 @@
+# Project-local gitignore for esp32_field_node
+# (root /home/devel/SwarmLoc/.gitignore covers .pio/, build artifacts, etc.)
+
+# Captured serial output and other test artifacts
+tests/results/
+tests/outputs/
+
+# Secrets — never commit these
+# wifi_credentials.h itself is committed with placeholder defaults so the
+# project builds out of the box. The .local.h override file (created by the
+# developer locally) holds the real credentials and stays out of git.
+include/wifi_credentials.local.h
+include/credentials.h
+include/secrets.h
