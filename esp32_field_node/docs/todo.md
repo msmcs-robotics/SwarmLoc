@@ -1,54 +1,66 @@
 # esp32_field_node — Todo
 
-> Last updated: 2026-05-08, end of bootstrap-through-M3 session
+> Last updated: 2026-05-08, end of M4
 
 ## In Progress
 
-_None — M0 → M3 (open path) complete; awaiting next-session direction._
+_None — project is at end-of-M4 (functionally complete vs. original scope)._
 
 ## Blocked
 
-- M3 enterprise live-test — needs user-supplied UAA WiFi credentials
-  (see `docs/findings/m3-open-connection-success.md` for steps)
+- **M3 enterprise live-test** — needs user-supplied UAA credentials in
+  `include/wifi_credentials.local.h`.
+- **Browser visit of `http://10.232.20.126/`** — depends on whether
+  MSC - GUEST captive portal isolates clients. If isolated, switch to UAA
+  WiFi (with creds) instead.
 
 ## Up Next
 
-- [ ] **User**: visually confirm the OLED shows the expected content
-  (boot banner → scan list → connected info: SSID, IP, MAC, RSSI, "captive")
-- [ ] **User** (optional): test M3 enterprise path against `UAA WiFi -MatSu`:
-  ```
-  cp include/wifi_credentials.local.h.example include/wifi_credentials.local.h
-  $EDITOR include/wifi_credentials.local.h    # set USERNAME, PASSWORD
-  scripts/upload_and_capture.sh
-  ```
-- [ ] M4 — MPU6050 IMU integration (hardware not yet wired — defer until breakout is on the breadboard)
+- [ ] **User**: hit `http://10.232.20.126/` from a device on MSC - GUEST
+  and confirm the IMU monitor page renders + values update at ~10 Hz.
+  Tilt the breakout and watch the numbers change.
+- [ ] **User** (optional): `cp include/wifi_credentials.local.h.example
+  include/wifi_credentials.local.h`, set USERNAME / PASSWORD, then
+  `scripts/upload_and_capture.sh` to live-test the WPA2-Enterprise path
+  against `UAA WiFi -MatSu`.
+- [ ] mDNS responder (`swarmloc-node.local`) — small, useful, no creds
+  required. Reasonable next-session feature.
 
 ## Backlog
 
-- [ ] mDNS responder so the node is discoverable on the local LAN (works even behind captive portal)
-- [ ] Refactor WiFi state to use `WiFi.onEvent()` callbacks instead of polling
+- [ ] WebSocket replacement for HTTP polling (lower latency)
+- [ ] WiFi `onEvent()` refactor (cleaner than polling `WiFi.status()`)
 - [ ] NVS / `Preferences` for runtime credential storage
-- [ ] (much later) Auto-completing the captive-portal form — vendor-specific, fragile, deliberately deferred
-- [ ] Optional second build env for an `esp32dev_imu` variant once IMU is wired (mirror DWS1000_UWB's multi-env pattern)
+- [ ] OTA firmware update over WiFi
+- [ ] NTP time sync (after captive portal authenticated)
+- [ ] More I2C peripherals — the bus is wide open (BME280 humidity / temp,
+  VL53L0X distance, INA219 current sense — all auto-labelled by
+  `i2cDeviceName()` if added)
 
-## Recently Completed (this session)
+## Recently Completed (this autonomous session, 2026-05-08)
 
-- [x] 2026-05-08 — Project scaffold created at `/home/devel/SwarmLoc/esp32_field_node/`
-- [x] 2026-05-08 — Switched lib_deps to `olikraus/U8g2` (matches repo convention)
-- [x] 2026-05-08 — Spawned 5 parallel Explore agents over the session (display demo hunt, WPA2-Enterprise demo hunt, PEAP code extraction, U8g2 ref extraction, demo-projects tips-and-tricks mining); all results captured in `docs/findings/`
-- [x] 2026-05-08 — **M0 verified** on hardware (boot banner, chip ID, I2C 0x3C found)
-- [x] 2026-05-08 — **M1 verified** on hardware (WiFi scanner found 9 networks; encryption-string mapping correct)
-- [x] 2026-05-08 — **Big finding**: MSC - GUEST is OPEN with captive portal, NOT WPA2-Enterprise. UAA WiFi -MatSu is the enterprise one (per user)
-- [x] 2026-05-08 — **M2 verified** on hardware (OLED init OK; boot banner + scan-list rendered)
-- [x] 2026-05-08 — **M3 OPEN path verified** end-to-end: connected to MSC - GUEST, DHCP IP `10.232.20.126`, captive portal detected via HTTP 302
-- [x] 2026-05-08 — M3 enterprise path built (compiles clean), awaits user creds
-- [x] 2026-05-08 — Helper scripts: `build.sh`, `monitor.sh`, `upload_and_capture.sh`, `capture_serial.py`
-- [x] 2026-05-08 — Findings docs: existing-demo-inventory, msc-guest-wifi-no-certs, peap-mschapv2-reference, u8g2-ssd1306-128x64-reference, wifi-scan-sample, msc-guest-network-characterization, demo-projects-tips-and-tricks, m3-open-connection-success
-- [x] 2026-05-08 — Session record: `docs/archive/2026-05-08-session-summary.md`
-- [x] 2026-05-08 — Roadmap and todo updated
+- [x] M0 — project scaffold, platformio.ini, boot stub
+- [x] M1 — WiFi scanner verified: 9 networks visible, encryption-string mapping correct
+- [x] **Big finding**: `MSC - GUEST` is OPEN + captive portal (NOT WPA2-Enterprise);
+  `UAA WiFi -MatSu` is the user's actual Enterprise network
+- [x] M2 — U8g2 SSD1306 128×64 OLED rendering verified
+- [x] M3 — OPEN-path WiFi connect verified live (DHCP, captive-portal detection),
+  WPA2-Enterprise path build-verified (awaits user creds)
+- [x] OLED 3-row redesign (`u8g2_font_helvB12_tf`) — user confirmed the
+  thin-stroke font was illegible; bold proportional fixed it
+- [x] **M4** — MPU6050 detected, IMU task on Core 0, web server on port 80
+  serving live JSON, OLED preserved as SSID/MAC/IP only
+- [x] Vendored MPU6050 lib from `~/floppi/flight_controller/`
+- [x] 5 parallel Explore agents over the session
+- [x] 9 findings docs + execution plan + 2 session records
+- [x] Helper scripts (build, monitor, upload_and_capture, capture_serial.py)
+- [x] Two git commits
 
 ## Notes
 
-- MSC - GUEST: open, captive portal, DHCP gives a real LAN IP (10.232.20.x). The portal blocks the wider internet but not LAN-local traffic.
-- UAA WiFi -MatSu: WPA2-Enterprise PEAP/MSCHAPv2, no certs needed (per user); code is ready in `lib/wifi_field/`, awaits credentials.
-- Hardware: ESP32-WROOM-32D, STA MAC `0C:B8:15:C1:39:B8`, on `/dev/ttyUSB0`.
+- The whole project went from "doesn't exist" to "M4 functionally complete"
+  in one autonomous session.
+- Build budget: 78.3% flash, 15.0% RAM — plenty of room for OTA + NTP +
+  MQTT + a couple more sensors before getting tight.
+- Hardware: ESP32-WROOM-32D, OLED + MPU6050 sharing I2C, STA MAC
+  `0C:B8:15:C1:39:B8`, on `/dev/ttyUSB0`. Connects to MSC - GUEST.

@@ -32,43 +32,38 @@ void display_status(const char* status_line) {
   u8g2.sendBuffer();
 }
 
-void display_connected(const char* mode_label,
-                       const char* ssid,
-                       const char* ip_str,
+void display_connected(const char* ssid,
                        const char* mac_str,
-                       int         rssi_dbm,
-                       const char* portal_status) {
+                       const char* ip_str) {
   u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_6x10_tf);
 
-  // Header
-  char header[24];
-  snprintf(header, sizeof(header), "Connected: %s",
-           mode_label ? mode_label : "?");
-  u8g2.drawStr(0, 10, header);
+  // 3-row layout on 128x64. helvB12 = Helvetica Bold ~12pt, proportional.
+  // Bold strokes survive 1-bit OLED rendering cleanly (the previous 7x14_tf
+  // had too-thin strokes that looked broken). Proportional spacing means
+  // a 17-char MAC like "0C:B8:15:C1:39:B8" fits horizontally because most
+  // glyphs are narrower than 8 px.
+  u8g2.setFont(u8g2_font_helvB12_tf);
 
-  // SSID (truncated)
-  char buf[32];
-  snprintf(buf, sizeof(buf), "%.20s", ssid ? ssid : "?");
-  u8g2.drawStr(0, 22, buf);
+  char buf[24];
 
-  // IP
-  snprintf(buf, sizeof(buf), "IP:  %s", ip_str ? ip_str : "?");
-  u8g2.drawStr(0, 33, buf);
+  // Row 1 — SSID (baseline y=16, char body y≈4..16)
+  snprintf(buf, sizeof(buf), "%.20s", (ssid && ssid[0]) ? ssid : "(no ssid)");
+  u8g2.drawStr(0, 16, buf);
 
-  // MAC
-  snprintf(buf, sizeof(buf), "MAC: %s", mac_str ? mac_str : "?");
-  u8g2.drawStr(0, 44, buf);
+  // Row 2 — MAC (baseline y=38)
+  snprintf(buf, sizeof(buf), "%.20s", (mac_str && mac_str[0]) ? mac_str : "(no mac)");
+  u8g2.drawStr(0, 38, buf);
 
-  // RSSI + portal status combined
-  if (portal_status && portal_status[0]) {
-    snprintf(buf, sizeof(buf), "%d dBm  %s", rssi_dbm, portal_status);
-  } else {
-    snprintf(buf, sizeof(buf), "%d dBm", rssi_dbm);
+  // Row 3 — IP, only when actually connected (baseline y=60)
+  if (ip_str && ip_str[0] && strcmp(ip_str, "0.0.0.0") != 0) {
+    snprintf(buf, sizeof(buf), "%.20s", ip_str);
+    u8g2.drawStr(0, 60, buf);
   }
-  u8g2.drawStr(0, 55, buf);
 
   u8g2.sendBuffer();
+
+  // Restore default font for other display calls.
+  u8g2.setFont(u8g2_font_6x10_tf);
 }
 
 void display_wifi_list(const char* const* ssids, const int* rssi, int count) {

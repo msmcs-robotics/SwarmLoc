@@ -1,47 +1,91 @@
-// esp32_field_node — M3 (scanner + OLED + connect + portal probe)
+// esp32_field_node — M4 (M3 + MPU6050 IMU + web server, dual-core)
 //
-// Layered on top of M2:
-//   - M0: boot banner, chip info, I2C bus scan
-//   - M1: WiFi scan + serial 'scan' command
-//   - M2: SSD1306 OLED — boot banner + scan-results render
-//   - M3: connect path (open + WPA2-Enterprise PEAP); HTTP captive-portal
-//         probe; render SSID + IP + MAC + RSSI on display per user request
+// Architecture (per user request):
+//   - Core 0: IMU sampling task @ 20 Hz, pushes ImuReading via web_set_imu()
+//   - Core 1: Arduino loop — WiFi management, HTTP server (port 80),
+//             OLED refresh, serial CLI
+//
+// All I2C transactions on the shared bus (OLED @ 0x3C, MPU6050 @ 0x68)
+// are serialized through g_i2c_mutex. Wire is not thread-safe; the mutex
+// is mandatory now that two cores can drive it.
+//
+// OLED keeps its 3-row SSID / MAC / IP layout (no IMU data on display —
+// IMU is for the flight controller project / web monitor).
 
 #include <Arduino.h>
 #include <Wire.h>
 #include <WiFi.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#include <freertos/task.h>
 
 #include "display.h"
 #include "wifi_field.h"
 #include "wifi_credentials.h"
+#include "imu.h"
+#include "web.h"
 
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 static const uint32_t WIFI_RESCAN_MS = 30000UL;
-static bool           g_display_ok    = false;
-static bool           g_connected     = false;
-static String         g_mode_label;
-static String         g_connected_ssid;
+static const uint32_t IMU_PERIOD_MS  = 50;       // 20 Hz IMU sampling
+static const uint32_t IMU_LOG_MS     = 5000;     // serial log cadence
+
+static bool   g_display_ok = false;
+static bool   g_imu_present = false;
+static bool   g_web_ok      = false;
+static bool   g_connected   = false;
+static String g_mode_label;
+static String g_connected_ssid;
+
+static SemaphoreHandle_t g_i2c_mutex = nullptr;
+
+// RAII scope-guard for the shared I2C bus.
+struct I2CLock {
+  I2CLock()  { if (g_i2c_mutex) xSemaphoreTake(g_i2c_mutex, portMAX_DELAY); }
+  ~I2CLock() { if (g_i2c_mutex) xSemaphoreGive(g_i2c_mutex); }
+};
 
 // ---------------------------------------------------------------------------
 // I2C bus scan (M0)
 // ---------------------------------------------------------------------------
-static bool scanI2C() {
+static const char* i2cDeviceName(uint8_t addr) {
+  switch (addr) {
+    case 0x3C: return "SSD1306 OLED";
+    case 0x3D: return "SSD1306 OLED (alt addr)";
+    case 0x68: return "MPU6050 IMU";
+    case 0x69: return "MPU6050 IMU (AD0=high)";
+    case 0x76: return "BME280/BMP280";
+    case 0x77: return "BME280/BMP280 (alt)";
+    case 0x40: return "INA219 / Si7021";
+    case 0x29: return "VL53L0X ToF";
+    default:   return "";
+  }
+}
+
+struct I2CScanResult { bool oled; bool imu; };
+
+static I2CScanResult scanI2C() {
+  I2CScanResult r{false, false};
   Serial.println("[i2c] scanning bus...");
   uint8_t found = 0;
-  bool oled = false;
   for (uint8_t addr = 1; addr < 127; addr++) {
     Wire.beginTransmission(addr);
     if (Wire.endTransmission() == 0) {
-      Serial.printf("[i2c]   device @ 0x%02X%s\n", addr,
-                    addr == OLED_I2C_ADDR ? "  <- expected SSD1306" : "");
-      if (addr == OLED_I2C_ADDR) oled = true;
+      const char* name = i2cDeviceName(addr);
+      if (name[0]) {
+        Serial.printf("[i2c]   device @ 0x%02X  -- %s\n", addr, name);
+      } else {
+        Serial.printf("[i2c]   device @ 0x%02X\n", addr);
+      }
+      if (addr == OLED_I2C_ADDR) r.oled = true;
+      if (addr == 0x68)          r.imu  = true;
       found++;
     }
   }
   Serial.printf("[i2c] scan done, %u device(s) found\n", found);
-  return oled;
+  return r;
 }
 
 // ---------------------------------------------------------------------------
@@ -63,28 +107,31 @@ static const char* authToString(wifi_auth_mode_t a) {
 }
 
 // ---------------------------------------------------------------------------
-// Connected info → display + serial (the M3 ask: SSID, IP, MAC, RSSI)
+// Connected info → display + serial (3-row OLED: SSID / MAC / IP)
 // ---------------------------------------------------------------------------
 static void renderConnected(const char* mode_label, const char* ssid) {
-  String ip  = WiFi.localIP().toString();
-  String mac = WiFi.macAddress();
+  String ip   = WiFi.localIP().toString();
+  String mac  = WiFi.macAddress();
   int    rssi = WiFi.RSSI();
 
   const char* portal = wifi_field_probe_portal();
-
   Serial.printf("[wifi] mode=%s ssid='%s' ip=%s mac=%s rssi=%ddBm portal=%s\n",
                 mode_label, ssid, ip.c_str(), mac.c_str(), rssi, portal);
 
   if (g_display_ok) {
-    display_connected(mode_label, ssid, ip.c_str(), mac.c_str(), rssi, portal);
+    I2CLock lock;
+    display_connected(ssid, mac.c_str(), ip.c_str());
   }
 }
 
 // ---------------------------------------------------------------------------
-// WiFi scan (M1, kept; updated to render to display in M2)
+// WiFi scan
 // ---------------------------------------------------------------------------
 static void wifiScanAndPrint() {
-  if (g_display_ok && !g_connected) display_status("WiFi: scanning...");
+  if (g_display_ok && !g_connected) {
+    I2CLock lock;
+    display_status("WiFi: scanning...");
+  }
 
   Serial.println("[wifi] scan starting (sync, including hidden)...");
   uint32_t t0 = millis();
@@ -93,7 +140,10 @@ static void wifiScanAndPrint() {
 
   if (n < 0) {
     Serial.printf("[wifi] scan failed (rc=%d)\n", n);
-    if (g_display_ok && !g_connected) display_status("WiFi: scan failed");
+    if (g_display_ok && !g_connected) {
+      I2CLock lock;
+      display_status("WiFi: scan failed");
+    }
     return;
   }
   Serial.printf("[wifi] %d network(s) in %lums\n", n, (unsigned long)dt);
@@ -123,6 +173,7 @@ static void wifiScanAndPrint() {
       top_ptr[i]  = top_str[i].c_str();
       top_rssi[i] = WiFi.RSSI(i);
     }
+    I2CLock lock;
     display_wifi_list(top_ptr, top_rssi, top_count);
   }
 
@@ -130,13 +181,14 @@ static void wifiScanAndPrint() {
 }
 
 // ---------------------------------------------------------------------------
-// Connect dispatchers (M3)
+// Connect dispatchers
 // ---------------------------------------------------------------------------
 static bool connectOpen(const char* ssid) {
   if (!ssid || !ssid[0]) return false;
   if (g_display_ok) {
     char buf[32];
     snprintf(buf, sizeof(buf), "Connect: %.20s", ssid);
+    I2CLock lock;
     display_status(buf);
   }
   bool ok = wifi_field_connect_open(ssid, WIFI_CONNECT_TIMEOUT_MS);
@@ -145,8 +197,9 @@ static bool connectOpen(const char* ssid) {
     g_mode_label     = "OPEN";
     g_connected_ssid = ssid;
     renderConnected("OPEN", ssid);
-  } else {
-    if (g_display_ok) display_status("Connect failed (open)");
+  } else if (g_display_ok) {
+    I2CLock lock;
+    display_status("Connect failed (open)");
   }
   return ok;
 }
@@ -155,6 +208,7 @@ static bool connectEnterprise() {
   if (g_display_ok) {
     char buf[32];
     snprintf(buf, sizeof(buf), "Connect: %.20s", WIFI_ENT_SSID);
+    I2CLock lock;
     display_status(buf);
   }
   bool ok = wifi_field_connect_enterprise(
@@ -165,8 +219,9 @@ static bool connectEnterprise() {
     g_mode_label     = "WPA2-Ent";
     g_connected_ssid = WIFI_ENT_SSID;
     renderConnected("WPA2-Ent", WIFI_ENT_SSID);
-  } else {
-    if (g_display_ok) display_status("Connect failed (ent)");
+  } else if (g_display_ok) {
+    I2CLock lock;
+    display_status("Connect failed (ent)");
   }
   return ok;
 }
@@ -184,7 +239,40 @@ static bool connectAuto() {
 }
 
 // ---------------------------------------------------------------------------
-// Tiny serial command parser (M3-extended)
+// IMU task — Core 0 — 20 Hz read, publishes to web snapshot
+// ---------------------------------------------------------------------------
+static void imuTask(void* /*arg*/) {
+  Serial.printf("[imu-task] running on core %d, prio %d\n",
+                xPortGetCoreID(), (int)uxTaskPriorityGet(NULL));
+
+  uint32_t last_log = 0;
+  for (;;) {
+    ImuReading r;
+    bool ok = false;
+    {
+      I2CLock lock;
+      ok = imu_read(&r);
+    }
+    if (ok) {
+      web_set_imu(r);
+
+      uint32_t now = millis();
+      if (now - last_log >= IMU_LOG_MS) {
+        last_log = now;
+        Serial.printf(
+            "[imu] ax=%+.2f ay=%+.2f az=%+.2f g | "
+            "gx=%+.1f gy=%+.1f gz=%+.1f deg/s | t=%.1fC\n",
+            r.accel_x, r.accel_y, r.accel_z,
+            r.gyro_x,  r.gyro_y,  r.gyro_z,
+            r.temp_c);
+      }
+    }
+    vTaskDelay(pdMS_TO_TICKS(IMU_PERIOD_MS));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Serial command parser
 // ---------------------------------------------------------------------------
 static String inputBuffer;
 
@@ -203,7 +291,10 @@ static void runCmd(const String& cmd) {
   } else if (cmd.equalsIgnoreCase("disconnect")) {
     wifi_field_disconnect();
     g_connected = false;
-    if (g_display_ok) display_status("Disconnected");
+    if (g_display_ok) {
+      I2CLock lock;
+      display_status("Disconnected");
+    }
   } else if (cmd.equalsIgnoreCase("status")) {
     if (g_connected && WiFi.status() == WL_CONNECTED) {
       renderConnected(g_mode_label.c_str(), g_connected_ssid.c_str());
@@ -212,6 +303,33 @@ static void runCmd(const String& cmd) {
     }
   } else if (cmd.equalsIgnoreCase("portal")) {
     Serial.printf("[wifi] portal probe: %s\n", wifi_field_probe_portal());
+  } else if (cmd.equalsIgnoreCase("imu")) {
+    if (!imu_ready()) {
+      Serial.println("[imu] not initialized");
+    } else {
+      ImuReading r;
+      bool ok;
+      {
+        I2CLock lock;
+        ok = imu_read(&r);
+      }
+      if (ok) {
+        Serial.printf("[imu] ax=%+.3f ay=%+.3f az=%+.3f g | "
+                      "gx=%+.2f gy=%+.2f gz=%+.2f deg/s | t=%.2fC | t_ms=%lu\n",
+                      r.accel_x, r.accel_y, r.accel_z,
+                      r.gyro_x,  r.gyro_y,  r.gyro_z,
+                      r.temp_c, (unsigned long)r.millis_when);
+      } else {
+        Serial.println("[imu] read failed");
+      }
+    }
+  } else if (cmd.equalsIgnoreCase("web")) {
+    if (g_web_ok && WiFi.status() == WL_CONNECTED) {
+      Serial.printf("[web] http://%s/  (poll /imu for JSON)\n",
+                    WiFi.localIP().toString().c_str());
+    } else {
+      Serial.println("[web] not running");
+    }
   } else if (cmd.equalsIgnoreCase("help") || cmd.equalsIgnoreCase("?")) {
     Serial.println("[cmd] commands:");
     Serial.println("       scan                     re-scan WiFi");
@@ -221,6 +339,8 @@ static void runCmd(const String& cmd) {
     Serial.println("       disconnect");
     Serial.println("       status                   show connection info");
     Serial.println("       portal                   re-probe captive portal");
+    Serial.println("       imu                      single MPU6050 reading");
+    Serial.println("       web                      print web URL");
     Serial.println("       help");
   } else {
     Serial.printf("[cmd] unknown: '%s' (try: help)\n", cmd.c_str());
@@ -247,31 +367,41 @@ void setup() {
   Serial.begin(115200);
   delay(200);
   Serial.println();
-  Serial.println("=== esp32_field_node — M3 (WiFi + OLED + connect) ===");
+  Serial.println("=== esp32_field_node — M4 (WiFi + OLED + IMU + web) ===");
   Serial.printf("CPU: %s rev %d, %u core(s) @ %lu MHz, flash %luKB\n",
                 ESP.getChipModel(), ESP.getChipRevision(),
                 ESP.getChipCores(), (unsigned long)ESP.getCpuFreqMHz(),
                 (unsigned long)(ESP.getFlashChipSize() / 1024));
+  Serial.printf("[boot] running on core %d\n", xPortGetCoreID());
 
+  // I2C bus + mutex (no other task is running yet — setup is single-threaded)
   Wire.begin();
-  bool oled_present = scanI2C();
+  g_i2c_mutex = xSemaphoreCreateMutex();
 
-  if (oled_present) {
+  I2CScanResult i2c = scanI2C();
+  g_imu_present = i2c.imu;
+
+  if (i2c.oled) {
     g_display_ok = display_init();
     if (g_display_ok) {
       Serial.println("[oled] init OK");
-      display_banner("SwarmLoc node", "M3 boot");
+      display_banner("SwarmLoc node", "M4 boot");
     } else {
       Serial.println("[oled] init FAILED — running headless");
     }
   } else {
     Serial.println("[oled] not on I2C bus — running headless");
   }
+
+  if (g_imu_present) {
+    if (!imu_init()) g_imu_present = false;
+  } else {
+    Serial.println("[imu] no MPU6050 on bus — IMU task will not start");
+  }
+
   delay(1500);
 
-  // STA MAC is stable based on chip — useful even pre-connect
   Serial.printf("[wifi] STA MAC: %s\n", WiFi.macAddress().c_str());
-
   Serial.println("[wifi] mode=STA; clearing prior association...");
   WiFi.mode(WIFI_STA);
   WiFi.disconnect(true);
@@ -284,6 +414,21 @@ void setup() {
   connectAuto();
 #endif
 
+  // Web server: only meaningful once WiFi is up.
+  if (WiFi.status() == WL_CONNECTED) {
+    g_web_ok = web_init();
+  }
+
+  // IMU task — pinned to Core 0. Arduino loop stays on Core 1.
+  if (imu_ready()) {
+    BaseType_t rc = xTaskCreatePinnedToCore(
+        imuTask, "imu_task",
+        /*stack*/ 4096, /*arg*/ nullptr,
+        /*prio*/ 2,     /*handle*/ nullptr,
+        /*core*/ 0);
+    Serial.printf("[boot] IMU task spawn rc=%d (Core 0)\n", (int)rc);
+  }
+
   Serial.println("[boot] entering loop() — type 'help' for commands");
 }
 
@@ -295,10 +440,11 @@ void loop() {
   static uint32_t beat            = 0;
 
   handleSerialInput();
+  web_handle();   // pump HTTP requests on Core 1
 
   uint32_t now = millis();
 
-  // If we believe we should be connected but the radio dropped, retry.
+  // Reconnect if we believed we were connected but the radio dropped.
   if (g_connected && WiFi.status() != WL_CONNECTED) {
     if (now - lastRetry >= WIFI_RECONNECT_INTERVAL_MS) {
       lastRetry = now;
@@ -307,7 +453,7 @@ void loop() {
     }
   }
 
-  // Periodic refresh of the connected screen — RSSI changes, portal can flip
+  // Periodic refresh of the connected screen
   if (g_connected && WiFi.status() == WL_CONNECTED) {
     if (now - lastInfoRefresh >= 10000UL) {
       lastInfoRefresh = now;
@@ -315,7 +461,7 @@ void loop() {
     }
   }
 
-  // Auto re-scan only when not connected (scan-while-associated can hang)
+  // Auto-rescan only when not connected (scan-while-associated can hang)
   if (!g_connected && (now - lastScan >= WIFI_RESCAN_MS)) {
     lastScan = now;
     wifiScanAndPrint();
@@ -323,9 +469,9 @@ void loop() {
 
   if (now - lastBeat >= 5000UL) {
     lastBeat = now;
-    Serial.printf("[heartbeat] %lu — uptime %lus, status=%d\n",
+    Serial.printf("[heartbeat] %lu — uptime %lus, status=%d, web=%d\n",
                   (unsigned long)(++beat), (unsigned long)(now / 1000),
-                  (int)WiFi.status());
+                  (int)WiFi.status(), (int)g_web_ok);
   }
-  delay(20);
+  delay(10);  // shorter than before — let web_handle() run more often
 }

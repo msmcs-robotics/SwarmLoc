@@ -1,14 +1,11 @@
 # esp32_field_node — Roadmap
 
-> Last updated: 2026-05-08
+> Last updated: 2026-05-08, end of M4
 
 ## Overview
 
-Milestone-driven roadmap. Each milestone corresponds to a stable, demo-able
-state of the firmware. M1 (scanner) preceded any auth work — that approach
-worked: the scanner revealed `MSC - GUEST` is OPEN with a captive portal
-(not WPA2-Enterprise as initially assumed), which directly shaped the M3
-design.
+Milestone-driven roadmap. M0 → M4 all completed in a single autonomous
+session on 2026-05-08.
 
 ---
 
@@ -31,62 +28,74 @@ design.
 ## M2 — OLED status display ✓
 
 - [x] U8g2 SSD1306 128×64 init via `U8G2_SSD1306_128X64_NONAME_F_HW_I2C` — see `lib/display/`
-- [x] Render boot banner ("SwarmLoc node" / "M2 boot")
+- [x] Render boot banner ("SwarmLoc node" / "Mx boot")
 - [x] Render top-5 WiFi scan results with RSSI bars
 - [x] Reuse `GPS_module/GPS_OLED_091.ino` rendering pattern, swapped constructor for 128×64
+- [x] 3-row final layout (SSID / MAC / IP) using `u8g2_font_helvB12_tf` for legibility — `display_connected()`
 
-## M3 — WiFi connection ✓ (open path) / ☑ build-only (enterprise path)
+## M3 — WiFi connection ✓ (open live) / ☑ build-only (enterprise)
 
 - [x] Open-network connect path — `WiFi.begin(ssid)` for `MSC - GUEST`
 - [x] Captive-portal probe via `http://connectivitycheck.gstatic.com/generate_204` (HTTP/204 = online, 200 / 30x = captive, otherwise error)
 - [x] WPA2-Enterprise PEAP/MSCHAPv2 (no certs) connect path — `lib/wifi_field/wifi_field.cpp::wifi_field_connect_enterprise()`. Built clean, awaits user-supplied UAA credentials for live test
-- [x] Display SSID + IP + MAC + RSSI + portal status on OLED — `lib/display/display.cpp::display_connected()`
+- [x] Display SSID + MAC + IP on OLED — `lib/display/display.cpp::display_connected()`
 - [x] Verified live: `MSC - GUEST` → IP `10.232.20.126`, MAC `0C:B8:15:C1:39:B8`, portal=captive (HTTP 302) — see `findings/m3-open-connection-success.md`
 
-## M4 — MPU6050 IMU (next session)
+## M4 — MPU6050 IMU + web server (dual-core) ✓
 
-- [ ] Adafruit_MPU6050 init over I2C (same bus as the OLED)
-- [ ] Stream accel + gyro to serial
-- [ ] Render real-time roll/pitch on OLED
-- [ ] **Hardware required**: MPU6050 breakout wired to 3.3V / GND / SDA=GPIO21 / SCL=GPIO22
-
----
-
-## First stable release ✓ (open path)
-
-End of M3 was: ESP32 boots, scans, auto-connects to MSC - GUEST, shows
-live SSID / IP / MAC / RSSI / portal-status on OLED, refreshes every
-10 s. Achieved 2026-05-08. M4 (IMU) is a feature add on top.
+- [x] Vendor MPU6050 lib from `~/floppi/flight_controller/lib/MPU6050/` (i2cdevlib classic, self-contained)
+- [x] `lib/imu/` — thin wrapper exposing `ImuReading {accel,gyro,temp,millis_when}`
+- [x] `lib/web/` — minimal HTTP server on port 80 using built-in `WebServer.h`; embedded HTML page polls `/imu` JSON @ 10 Hz
+- [x] Dual-core: IMU task pinned to Core 0 @ 20 Hz; Arduino loop on Core 1 handles WiFi / display / web / serial
+- [x] Global I2C mutex with RAII `I2CLock` guard around all Wire transactions
+- [x] OLED unchanged (SSID / MAC / IP only — IMU data deliberately NOT shown; that's for the flight controller project)
+- [x] New serial commands: `imu` (single read) and `web` (print URL)
+- [x] Verified live: gravity vector ~1 g on Z, gyro stationary ~0 °/s, temp ~24 °C, web up at `http://10.232.20.126/` — see `findings/m4-imu-web-success.md`
 
 ---
 
-## Nice to have *(later)*
+## First stable release ✓ — exceeded
+
+End of M3 was the original "first stable release" target. We finished
+M4 in the same session, so the project is at end-of-M4 (functionally
+complete relative to the original scope).
+
+---
+
+## Future / nice-to-have
 
 - [ ] User-driven test of M3 enterprise path against `UAA WiFi -MatSu` once credentials are filled into `include/wifi_credentials.local.h`
-- [ ] mDNS responder for local LAN discovery (works behind captive portal)
-- [ ] WiFi event-callback refactor (cleaner than polling `WiFi.status()` — see `findings/demo-projects-tips-and-tricks.md`)
-- [ ] NVS-backed credential storage so creds aren't recompiled in (Preferences API)
-- [ ] NTP time sync (only meaningful once portal is authenticated)
+- [ ] Browser test of the web monitor at `http://10.232.20.126/` (may be blocked by captive-portal client isolation; switch to UAA in that case)
+- [ ] mDNS responder (`swarmloc-node.local`) so the node is discoverable on local LAN without knowing the IP
+- [ ] WebSocket telemetry instead of HTTP polling (lower latency, half the bandwidth) — only if 10 Hz polling becomes a bottleneck
+- [ ] Refactor WiFi state to use `WiFi.onEvent()` callbacks instead of polling
+- [ ] NVS / `Preferences` for runtime credential storage (no recompile to change creds)
 - [ ] OTA firmware update over WiFi
-- [ ] MQTT publish of telemetry
-- [ ] Web UI for live status
+- [ ] NTP time sync (only meaningful once captive portal is authenticated)
+- [ ] Optional: form-submission to auto-authenticate captive portals (vendor-specific, fragile, deliberately deferred)
+- [ ] Sensor fusion (Madgwick / Kalman / DMP) if we ever want orientation rather than raw accel/gyro — most likely lives in the floppi flight controller project, not here
 
 ---
 
 ## Script infrastructure ✓
 
-Per [llm-project-bootstrap PROJECT_SCRIPTS.md](../../../llm-project-bootstrap/guides/PROJECT_SCRIPTS.md):
-
 - [x] **build** — `scripts/build.sh` wraps `pio run -d <project>`
-- [x] **deploy** — `scripts/upload_and_capture.sh PORT DURATION` — pio upload + serial capture
-- [x] **monitor** — `scripts/monitor.sh PORT DURATION` — serial capture only (resets via RTS)
-- [x] **capture engine** — `scripts/capture_serial.py` — reusable Python helper used by both wrappers
-- [ ] **install** — `scripts/install.sh` — verify PlatformIO + run `pio platform install espressif32`. Defer until first cold-machine setup is needed.
-- [ ] **test** — pytest-based modular tests under `tests/`. Defer until we have firmware whose behavior warrants automated testing (currently each milestone is verified by capture-and-visual-check).
+- [x] **deploy** — `scripts/upload_and_capture.sh PORT DURATION`
+- [x] **monitor** — `scripts/monitor.sh PORT DURATION`
+- [x] **capture engine** — `scripts/capture_serial.py`
+- [ ] **install** — `scripts/install.sh` — defer until first cold-machine setup
+- [ ] **test** — pytest-based modular tests under `tests/` — defer until firmware behavior warrants automated testing
 
 ---
 
 ## Notes
 
-- "Reuse before rebuild" was load-bearing: the user had already fought the WPA2-Enterprise cert flow on a prior project, and the captive-portal logic could have been a rabbit hole. Mining the existing demos (~/floppi, ~/GravityProbe, sibling SwarmLoc projects) saved hours.
-- For research-heavy tasks (WPA2-Enterprise API surface, ESP32 quirks, U8g2 init), parallel Explore agents proved much faster than serial reading.
+- "Reuse before rebuild" was load-bearing throughout: M2 reused
+  GPS_OLED_091's U8g2 pattern, M3 reused GravityProbe + floppi PEAP
+  patterns, M4 reused floppi's MPU6050 library wholesale and the floppi
+  dual-core architecture pattern.
+- Five Explore agents ran across the session: SSD1306-demo hunt,
+  WPA2-Enterprise demo hunt, PEAP code extraction, U8g2 reference
+  extraction, and tips-and-tricks mining of all three sibling projects.
+- Markdown-lint warnings on docs are template-style choices that match
+  the sibling DWS1000_UWB project — leave them.

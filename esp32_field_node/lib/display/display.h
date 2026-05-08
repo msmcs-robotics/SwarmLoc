@@ -16,15 +16,17 @@ void display_banner(const char* line1, const char* line2 = nullptr);
 void display_status(const char* status_line);
 void display_wifi_list(const char* const* ssids, const int* rssi, int count);
 
-// Render the post-connection info screen the user asked for: SSID, IP,
-// MAC, RSSI, and an optional portal-status string.
-//   mode_label   short label for top-line, e.g. "OPEN" or "WPA2-Ent"
-//   portal_status one of "online" / "captive" / "noprobe" / "error" / nullptr
-void display_connected(const char* mode_label,
-                       const char* ssid,
-                       const char* ip_str,
+// Render the 3-row connection-info screen: SSID, MAC, IP.
+// Larger font; intentionally minimal.
+//   ssid     — top row; "(no ssid)" if null/empty
+//   mac_str  — middle row; usually WiFi.macAddress()
+//   ip_str   — bottom row; pass nullptr / "" / "0.0.0.0" when not connected
+//              and the row is left blank (IP earned only when connected)
+//
+// RSSI and captive-portal status are intentionally NOT rendered — they're
+// printed to Serial only. The display stays clean: 3 facts, big font.
+void display_connected(const char* ssid,
                        const char* mac_str,
-                       int         rssi_dbm,
-                       const char* portal_status);
+                       const char* ip_str);
 
 #endif
