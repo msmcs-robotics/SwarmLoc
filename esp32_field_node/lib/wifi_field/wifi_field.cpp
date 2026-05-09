@@ -33,6 +33,21 @@ bool wifi_field_connect_open(const char* ssid, uint32_t timeout_ms) {
   return wait_connected(timeout_ms);
 }
 
+bool wifi_field_connect_psk(const char* ssid,
+                            const char* password,
+                            uint32_t    timeout_ms) {
+  if (!ssid || !password) return false;
+  Serial.printf("[wifi] connecting WPA2-PSK: '%s'\n", ssid);
+
+  WiFi.disconnect(true);
+  delay(100);
+  WiFi.mode(WIFI_STA);
+  delay(100);
+
+  WiFi.begin(ssid, password);
+  return wait_connected(timeout_ms);
+}
+
 bool wifi_field_connect_enterprise(const char* ssid,
                                    const char* identity,
                                    const char* user,

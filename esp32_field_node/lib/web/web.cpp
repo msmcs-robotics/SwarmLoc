@@ -111,6 +111,11 @@ bool web_init() {
     g_server.send(200, "application/json", buf);
   });
 
+  // Silence the inevitable browser favicon request.
+  g_server.on("/favicon.ico", []() {
+    g_server.send(204);
+  });
+
   g_server.onNotFound([]() {
     g_server.send(404, "text/plain", "not found\n");
   });

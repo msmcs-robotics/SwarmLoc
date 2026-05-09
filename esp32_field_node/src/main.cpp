@@ -204,6 +204,27 @@ static bool connectOpen(const char* ssid) {
   return ok;
 }
 
+static bool connectPsk(const char* ssid, const char* password) {
+  if (!ssid || !ssid[0] || !password) return false;
+  if (g_display_ok) {
+    char buf[32];
+    snprintf(buf, sizeof(buf), "Connect: %.20s", ssid);
+    I2CLock lock;
+    display_status(buf);
+  }
+  bool ok = wifi_field_connect_psk(ssid, password, WIFI_CONNECT_TIMEOUT_MS);
+  g_connected = ok;
+  if (ok) {
+    g_mode_label     = "WPA2-PSK";
+    g_connected_ssid = ssid;
+    renderConnected("WPA2-PSK", ssid);
+  } else if (g_display_ok) {
+    I2CLock lock;
+    display_status("Connect failed (psk)");
+  }
+  return ok;
+}
+
 static bool connectEnterprise() {
   if (g_display_ok) {
     char buf[32];
@@ -227,13 +248,24 @@ static bool connectEnterprise() {
 }
 
 static bool connectAuto() {
+  // Priority: PSK > Enterprise > Open. Matches user's typical preference —
+  // PSK (e.g. an iPhone hotspot) is the most likely "I want this to work
+  // right now" target, and most often actually has internet behind it.
+  bool have_psk = strcmp(WIFI_PSK_SSID, "FILL_ME_IN") != 0
+               && strcmp(WIFI_PSK_PASSWORD, "FILL_ME_IN") != 0;
+  if (have_psk) {
+    Serial.printf("[wifi] auto: PSK creds present; trying '%s'\n", WIFI_PSK_SSID);
+    return connectPsk(WIFI_PSK_SSID, WIFI_PSK_PASSWORD);
+  }
+
   bool have_ent = strcmp(WIFI_ENT_USERNAME, "FILL_ME_IN") != 0
                && strcmp(WIFI_ENT_PASSWORD, "FILL_ME_IN") != 0;
   if (have_ent) {
     Serial.println("[wifi] auto: enterprise creds present; trying enterprise");
     return connectEnterprise();
   }
-  Serial.printf("[wifi] auto: no enterprise creds; trying open '%s'\n",
+
+  Serial.printf("[wifi] auto: no PSK / enterprise creds; trying open '%s'\n",
                 WIFI_OPEN_SSID);
   return connectOpen(WIFI_OPEN_SSID);
 }
@@ -286,6 +318,8 @@ static void runCmd(const String& cmd) {
   } else if (cmd.equalsIgnoreCase("connect ent") ||
              cmd.equalsIgnoreCase("connect enterprise")) {
     connectEnterprise();
+  } else if (cmd.equalsIgnoreCase("connect psk")) {
+    connectPsk(WIFI_PSK_SSID, WIFI_PSK_PASSWORD);
   } else if (cmd.equalsIgnoreCase("connect")) {
     connectAuto();
   } else if (cmd.equalsIgnoreCase("disconnect")) {
@@ -333,8 +367,9 @@ static void runCmd(const String& cmd) {
   } else if (cmd.equalsIgnoreCase("help") || cmd.equalsIgnoreCase("?")) {
     Serial.println("[cmd] commands:");
     Serial.println("       scan                     re-scan WiFi");
-    Serial.println("       connect                  auto (ent if creds set, else open)");
-    Serial.println("       connect ent              WPA2-Enterprise (uses wifi_credentials.h)");
+    Serial.println("       connect                  auto (PSK > ent > open by cred presence)");
+    Serial.println("       connect psk              WPA2-PSK using wifi_credentials.h values");
+    Serial.println("       connect ent              WPA2-Enterprise using wifi_credentials.h values");
     Serial.println("       connect open <SSID>      open network");
     Serial.println("       disconnect");
     Serial.println("       status                   show connection info");

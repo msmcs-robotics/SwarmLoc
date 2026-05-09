@@ -12,6 +12,13 @@
 
 bool wifi_field_connect_open(const char* ssid, uint32_t timeout_ms = 15000);
 
+// WPA2-PSK / WPA-PSK / WPA-WPA2-PSK — pre-shared-key networks. Used for
+// iPhone hotspots, home WiFi, etc. ESP32 selects the protocol based on
+// what the AP advertises; we just hand it the password.
+bool wifi_field_connect_psk(const char* ssid,
+                            const char* password,
+                            uint32_t    timeout_ms = 15000);
+
 bool wifi_field_connect_enterprise(const char* ssid,
                                    const char* identity,
                                    const char* user,

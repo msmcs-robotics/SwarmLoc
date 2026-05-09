@@ -27,6 +27,16 @@
 #  endif
 #endif
 
+// === WPA2-PSK (regular pre-shared-key networks: home WiFi, phone hotspots) ===
+// If WIFI_PSK_SSID and WIFI_PSK_PASSWORD are both non-placeholder, this
+// is preferred at boot over open and enterprise paths.
+#ifndef WIFI_PSK_SSID
+#  define WIFI_PSK_SSID "FILL_ME_IN"
+#endif
+#ifndef WIFI_PSK_PASSWORD
+#  define WIFI_PSK_PASSWORD "FILL_ME_IN"
+#endif
+
 // === Open / captive-portal network (M3 path 1) ===
 #ifndef WIFI_OPEN_SSID
 #  define WIFI_OPEN_SSID "MSC - GUEST"
